@@ -36,7 +36,9 @@ RUN apk add --no-cache --virtual .runtime-deps \
         rng-tools \
         pcre-dev \
         su-exec \
+    && addgroup -g 1998 config \
     && adduser -D -H -u 60000 ss \
+    && adduser ss config \
     && ls /usr/bin/ss-* | xargs -n1 setcap cap_net_bind_service+ep
 
 COPY start.sh /usr/bin/
