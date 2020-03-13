@@ -17,10 +17,16 @@ FROM alpine
 COPY --from=build /usr/bin/trojan /usr/bin/trojan
 
 RUN apk add --no-cache --virtual .runtime-deps \
+        libcap \
         libstdc++ \
         boost-system \
         boost-program_options \
-        mariadb-connector-c
+        mariadb-connector-c \
+        su-exec \
+    && addgroup -g 1999 cert \
+    && adduser -D -H -u 60002 trojan \
+    && setcap cap_net_bind_service+ep /usr/bin/trojan
 
 WORKDIR /config
-CMD ["trojan", "config.json"]
+COPY start.sh /usr/bin/
+CMD ["/usr/bin/start.sh"]
