@@ -14,7 +14,9 @@ COPY --from=build /usr/bin/frpc /usr/bin/frps /usr/bin/
 RUN apk add --no-cache --virtual .runtime-deps \
         libcap \
         su-exec \
+    && addgroup -g 1998 config \
     && adduser -D -H -u 60003 frp \
+    && adduser frp config \
     && setcap cap_net_bind_service+ep /usr/bin/frpc \
     && setcap cap_net_bind_service+ep /usr/bin/frps
 
