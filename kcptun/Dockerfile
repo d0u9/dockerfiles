@@ -1,8 +1,9 @@
 FROM alpine as build
 
+ENV VERSION 20200226
 RUN apk add --no-cache --virtual .build-deps \
         wget \
-    && wget -nv -O - https://github.com/xtaci/kcptun/releases/download/v20200226/kcptun-linux-amd64-20200226.tar.gz \
+    && wget -nv -O - https://github.com/xtaci/kcptun/releases/download/v${VERSION}/kcptun-linux-amd64-${VERSION}.tar.gz \
        | tar -xz
 
 FROM alpine
