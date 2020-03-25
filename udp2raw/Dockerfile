@@ -18,5 +18,5 @@ RUN apk add --no-cache --virtual .runtime-deps \
     && adduser udp2raw config
 
 WORKDIR /config
-COPY start.sh /usr/bin/
+COPY start.sh nslookup.awk /usr/bin/
 CMD ["/usr/bin/start.sh"]
