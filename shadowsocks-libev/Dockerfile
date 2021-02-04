@@ -1,6 +1,6 @@
 FROM alpine as build
 
-ENV SS_VERSION 3.3.4
+ENV SS_VERSION 3.3.5
 RUN apk add --no-cache --virtual .build-deps \
         git \
         autoconf \

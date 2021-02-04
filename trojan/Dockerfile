@@ -1,6 +1,6 @@
 FROM alpine as build
 
-ENV TROJAN_VERSION 1.14.1
+ENV TROJAN_VERSION 1.16.1
 RUN apk add --no-cache --virtual .build-deps \
         wget \
         tar \
