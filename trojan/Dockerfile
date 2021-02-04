@@ -4,11 +4,14 @@ ENV TROJAN_VERSION 1.16.0
 RUN apk add --no-cache --virtual .build-deps \
         wget \
         tar \
-        xz \
-    && wget -nv https://github.com/trojan-gfw/trojan/releases/download/v${TROJAN_VERSION}/trojan-${TROJAN_VERSION}-linux-amd64.tar.xz \
-    && tar -xf trojan-${TROJAN_VERSION}-linux-amd64.tar.xz \
-    && cd trojan \
-    && mv trojan /usr/bin
+        build-base \
+        cmake \
+        boost-dev \
+        openssl-dev \
+        mariadb-connector-c-dev \
+    && wget -nv -O - https://github.com/trojan-gfw/trojan/archive/v${TROJAN_VERSION}.tar.gz | tar -zx \
+    && (cd trojan-${TROJAN_VERSION} && cmake . && make -j $(nproc) && strip -s trojan \
+    && mv trojan /usr/bin)
 
 FROM alpine
 COPY --from=build /usr/bin/trojan /usr/bin/trojan
