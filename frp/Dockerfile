@@ -1,6 +1,6 @@
 FROM alpine as build
 
-ENV FRP_VERSION 0.32.0
+ENV FRP_VERSION 0.35.1
 RUN apk add --no-cache --virtual .build-deps \
         wget \
         tar \
