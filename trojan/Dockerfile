@@ -10,13 +10,18 @@ RUN apk add --no-cache --virtual .build-deps \
         openssl-dev \
         mariadb-connector-c-dev \
     && wget -nv -O - https://github.com/trojan-gfw/trojan/archive/v${TROJAN_VERSION}.tar.gz | tar -zx \
-    && (cd trojan-${TROJAN_VERSION} && cmake . && make -j $(nproc) && strip -s trojan \
-    && mv trojan /usr/bin)
+    && cd trojan-${TROJAN_VERSION} \
+    && cmake . && make -j $(nproc) && strip -s trojan \
+    && mv trojan /usr/bin \
+    && wget -nv -O /usr/bin/getcert.py https://raw.githubusercontent.com/trojan-gfw/trojan/master/scripts/getcert.py
 
 FROM alpine
 COPY --from=build /usr/bin/trojan /usr/bin/trojan
+COPY --from=build /usr/bin/getcert.py /usr/bin/getcert.py
 
 RUN apk add --no-cache --virtual .runtime-deps \
+        jq \
+        python3 \
         libcap \
         libstdc++ \
         boost-system \
