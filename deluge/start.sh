@@ -23,6 +23,28 @@ if [ ! -f $SEALED_OFF ]; then
     touch $SEALED_OFF
 fi
 
-exec start-stop-daemon -S -c $PUID:$PGID -k $UMASK -x /usr/bin/deluged -- -d &
-exec gosu $PUID:$PGID deluge-web
+start-stop-daemon -S -c $PUID:$PGID -k $UMASK -x /usr/bin/deluged -- -d &
+status=$?
+if [ $status -ne 0 ]; then
+  echo "Failed to start deluged: $status"
+  exit $status
+fi
+
+gosu $PUID:$PGID deluge-web -d &
+status=$?
+if [ $status -ne 0 ]; then
+  echo "Failed to start deluged-web: $status"
+  exit $status
+fi
+
+while sleep 60; do
+  ps aux |grep deluged |grep -q -v grep
+  PROCESS_1_STATUS=$?
+  ps aux |grep deluge-web |grep -q -v grep
+  PROCESS_2_STATUS=$?
+  if [ $PROCESS_1_STATUS -ne 0 -o $PROCESS_2_STATUS -ne 0 ]; then
+    echo "One of the processes has already exited."
+    exit 1
+  fi
+done
 
