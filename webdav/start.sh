@@ -5,13 +5,27 @@ if [[ "$*" != webdav*start* ]]; then
     exec "$@"
 fi
 
-init_file=/initialized
+first_run="/inited"
+if ! [ -f $first_run ]; then
+    user=${USERNAME:-"root"}
+    password=${PASSWORD:-"password"}
 
-if [ -f $init_file ]; then
-    service apache2 restart
-else
-    echo "Webdav is not initialized, Run:"
-    echo "docker exec -it CONTAINER_NAME /first_run"
+    digest="$( printf "%s:%s:%s" "$user" webdav "$password" | md5sum | awk '{print $1}' )"
+    printf "%s:%s:%s\n" "$user" webdav "$digest" >> "/etc/apache2/users.password"
+
+    chown www-data:www-data /etc/apache2/users.password
+
+    touch $first_run
 fi
 
-while true; do sleep 1000; done
+service apache2 restart
+
+while sleep 60; do
+    ps aux | grep apache2 | grep -q -v grep
+    status=$?
+
+    if [ $status -ne 0 ]; then
+        echo "process has already exited."
+        exit 1
+    fi
+done

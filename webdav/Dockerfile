@@ -1,13 +1,19 @@
 FROM debian:buster-slim
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN set -eux ; \
+    apt-get update ; \
+    apt-get install -y --no-install-recommends \
         apache2 \
-        openssl \
-    && rm -fr /var/lib/apt/lists/*
+        ; \
+    rm -fr /var/lib/apt/lists/* ; \
+    mkdir /var/www/webdav ; \
+    chown -R www-data:www-data /var/www/ ; \
+    a2enmod dav ; \
+    a2enmod dav_fs ; \
+    a2enmod auth_digest ; \
+    : ;
 
-COPY default-ssl.conf ssl-params.conf first_run.sh /
-COPY start.sh /usr/local/bin/
+COPY start.sh /usr/bin/
 
 ENTRYPOINT ["start.sh"]
 CMD ["webdav", "start"]
