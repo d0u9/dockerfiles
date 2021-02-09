@@ -2,13 +2,7 @@ FROM jupyter/minimal-notebook
 
 USER root
 
-ENV NODE_VERSION 14.15.4
-
 RUN set -eux ; \
-    wget -nv https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz ; \
-    tar -xf node-v${NODE_VERSION}-linux-x64.tar.xz ; \
-    cp -r node-v${NODE_VERSION}-linux-x64/* /usr/ ; \
-    rm -fr node-v${NODE_VERSION}-* ; \
     npm install -g --unsafe-perm ijavascript ; \
     ijsinstall --install=global ; \
     chown -R jovyan /home/jovyan ; \
