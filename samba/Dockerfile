@@ -1,15 +1,12 @@
-FROM debian:buster-slim
+FROM alpine
 
-ENV SMB_CONF_DIR /var/samba
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        samba \
-        gosu \
-    && rm -fr /var/lib/apt/lists/* \
-    && mkdir -p "$SMB_CONF_DIR"
+RUN set -e; \
+    sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories; \
+    apk --no-cache --no-progress upgrade; \
+    apk --no-cache --no-progress add bash samba shadow tini tzdata;
 
-COPY start.sh usradmin smb_export smb_import /usr/local/bin/
-ENTRYPOINT ["start.sh"]
+COPY start.sh /usr/bin/
 
 EXPOSE 139 445
-CMD ["smb", "start"]
+
+CMD ["/sbin/tini", "--", "start.sh"]
