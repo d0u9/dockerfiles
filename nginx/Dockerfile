@@ -1,13 +1,10 @@
-FROM debian:buster-slim
+FROM alpine
 
-RUN apt-get update \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN : \
+    && apk add --no-cache --virtual .runtime-deps \
         nginx \
         openssl \
         apache2-utils \
-    && rm -fr /var/lib/apt/lists/*
+    && :
 
-COPY start.sh /usr/bin/
-CMD ["/usr/bin/start.sh"]
-
+CMD ["nginx", "-g", "daemon off;"]
