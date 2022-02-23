@@ -1,12 +1,13 @@
 FROM alpine AS build
 
+ARG TARGETOS
 ARG TARGETARCH
 
 ENV VERSION 20210922
 ENV URL https://github.com/xtaci/kcptun/releases/download
 RUN : \
     && apk add --no-cache --virtual .build-deps wget \
-    && wget -nv -O - ${URL}/v${VERSION}/kcptun-linux-${TARGETARCH}-${VERSION}.tar.gz | tar -xz \
+    && wget -nv -O - ${URL}/v${VERSION}/kcptun-${TARGETOS}-${TARGETARCH}-${VERSION}.tar.gz | tar -xz \
     && mkdir /output \
     && cp client_linux_${TARGETARCH} /output/kcp-client \
     && cp server_linux_${TARGETARCH} /output/kcp-server \
