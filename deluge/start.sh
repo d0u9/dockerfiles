@@ -40,6 +40,7 @@ su-exec deluge:deluge deluge-web \
     --config $CONFIG \
     --loglevel $LOG_LEVEL \
     --port 8112 \
+    --interface :: \
     --pidfile $(pwd)/deluge-web.pid \
     ;
 

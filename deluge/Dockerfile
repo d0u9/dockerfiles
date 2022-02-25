@@ -11,6 +11,8 @@ COPY --from=build /wheels /wheels
 RUN : \
     && apk --no-cache add su-exec shadow \
     && pip install --no-cache /wheels/* \
+    && FILE=$(find /usr -path "*/deluge/ui/web/json_api.py") \
+    && sed -i -r 's|^(\s*)(response = json\.dumps\(response\))|\1try:\n\1    \2\n\1except Exception:\n\1    response = json.dumps(response,ensure_ascii=False)|g' $FILE
     && mkdir /deluge \
     && chmod 1777 /deluge \
     && adduser -D deluge \
