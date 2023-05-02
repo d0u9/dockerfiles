@@ -1,0 +1,2 @@
+user1:passwd1:1000:group1,public
+user2:passwd2::
