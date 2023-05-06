@@ -20,7 +20,6 @@ COPY --from=builder /build/bin/* /usr/local/bin
 COPY docker-entrypoint.sh /usr/local/bin/
 
 RUN set -e; \
-    apk add --no-cache --virtual .build-deps su-exec; \
     addgroup -g 1000 ss; \
     adduser -H -D -G ss -u 1000 ss; \
     :;
