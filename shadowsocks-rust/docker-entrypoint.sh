@@ -48,7 +48,7 @@ if [ "$1" = 'ss' ]; then
     fi
     echo "arguments=$opts"
 
-    exec $BIN $@
+    exec $BIN $opts
 fi
 
 exec "$@"
