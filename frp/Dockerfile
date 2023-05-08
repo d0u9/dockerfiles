@@ -1,25 +1,46 @@
-FROM alpine as build
+FROM alpine as builder
 
-ENV FRP_VERSION 0.35.1
-RUN apk add --no-cache --virtual .build-deps \
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+
+# Note: ${TARGETPLATFORM} will be `linux/amd64`
+#       ${TARGETPLATFORM//\//_} will replace `/` with `_`
+
+RUN set -e; \
+    apk add --no-cache --virtual .build-deps \
         wget \
         tar \
-    && wget -nv -O - https://github.com/fatedier/frp/releases/download/v${FRP_VERSION}/frp_${FRP_VERSION}_linux_amd64.tar.gz \
-        | tar -xz \
-    && cp frp_${FRP_VERSION}_linux_amd64/frp[s,c] /usr/bin/
+        bash \
+        jq \
+        curl \
+        ; \
+    tag=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | jq .name -r); \
+    echo "$tag"; \
+    version=$(bash -c "echo ${tag:1}"); \
+    pkg="frp_${version}_${TARGETPLATFORM//\//_}.tar.gz"; \
+    wget -nv -O - https://github.com/fatedier/frp/releases/download/${tag}/${pkg} \
+        | tar -xz; \
+    cp frp_${version}_linux_amd64/frp[s,c] /usr/local/bin/; \
+    :;
 
 FROM alpine
-COPY --from=build /usr/bin/frpc /usr/bin/frps /usr/bin/
+COPY --from=builder /usr/local/bin/frpc /usr/local/bin/frps /usr/local/bin/
 
-RUN apk add --no-cache --virtual .runtime-deps \
+RUN set -e; \
+    apk add --no-cache --virtual .runtime-deps \
         libcap \
-        su-exec \
-    && addgroup -g 1998 config \
-    && adduser -D -H -u 60003 frp \
-    && adduser frp config \
-    && setcap cap_net_bind_service+ep /usr/bin/frpc \
-    && setcap cap_net_bind_service+ep /usr/bin/frps
+        ; \
+    addgroup -g 1000 frp; \
+    adduser -D -H -G frp -u 1000 frp; \
+    setcap cap_net_bind_service+ep /usr/local/bin/frpc; \
+    setcap cap_net_bind_service+ep /usr/local/bin/frps; \
+    :;
 
+USER frp:frp
 WORKDIR /config
-COPY start.sh /usr/bin/
-CMD ["/usr/bin/start.sh"]
+
+COPY docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["frp"]
