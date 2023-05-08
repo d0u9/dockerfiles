@@ -7,10 +7,12 @@ RUN set -e; \
     curl \
     ;
 
+ARG TARGETPLATFORM
 RUN set -e; \
     mkdir -p /build/bin; cd /build; \
     tag=$(curl -s https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest | jq .name -r); \
-    wget https://github.com/shadowsocks/shadowsocks-rust/releases/download/$tag/shadowsocks-$tag.x86_64-unknown-linux-musl.tar.xz -O ss.tar.xz; \
+    pkg="shadowsocks-${tag}.$(uname -m)-unknown-linux-musl.tar.xz"; \
+    wget https://github.com/shadowsocks/shadowsocks-rust/releases/download/$tag/${pkg} -O ss.tar.xz; \
     tar -xf ss.tar.xz -C bin; \
     :;
 
