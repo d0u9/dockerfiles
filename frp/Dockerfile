@@ -22,7 +22,7 @@ RUN set -e; \
     pkg="frp_${version}_${TARGETPLATFORM//\//_}.tar.gz"; \
     wget -nv -O - https://github.com/fatedier/frp/releases/download/${tag}/${pkg} \
         | tar -xz; \
-    cp frp_${version}_linux_amd64/frp[s,c] /usr/local/bin/; \
+    cp frp_${version}_${TARGETPLATFORM//\//_}/frp[s,c] /usr/local/bin/; \
     :;
 
 FROM alpine
