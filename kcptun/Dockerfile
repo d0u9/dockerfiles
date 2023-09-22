@@ -1,24 +1,43 @@
 FROM alpine as build
 
-ENV VERSION 20210103
-RUN apk add --no-cache --virtual .build-deps \
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+
+# Note: ${TARGETPLATFORM} will be `linux/amd64`
+#       ${TARGETPLATFORM//\//_} will replace `/` with `_`
+
+RUN set -e; \
+    apk add --no-cache --virtual .build-deps \
         wget \
-    && wget -nv -O - https://github.com/xtaci/kcptun/releases/download/v${VERSION}/kcptun-linux-amd64-${VERSION}.tar.gz \
-       | tar -xz
+        tar \
+        bash \
+        jq \
+        curl \
+        ; \
+    tag=$(curl -s https://api.github.com/repos/xtaci/kcptun/releases/latest | jq .tag_name -r); \
+    echo "$tag"; \
+    version=$(bash -c "echo ${tag:1}"); \
+    pkg="kcptun-${TARGETPLATFORM//\//-}-${version}.tar.gz"; \
+    wget -nv -O - https://github.com/xtaci/kcptun/releases/download/${tag}/${pkg} \
+        | tar -xz; \
+    cp client_${TARGETPLATFORM//\//_} /usr/local/bin/kcp-client; \
+    cp server_${TARGETPLATFORM//\//_} /usr/local/bin/kcp-server; \
+    :;
+
 
 FROM alpine
-COPY --from=build /*_linux_amd64 /usr/bin/
+COPY --from=build /usr/local/bin/kcp-client /usr/local/bin/kcp-server /usr/local/bin
 
-RUN apk add --no-cache --virtual .runtime-deps \
-        libcap \
-        su-exec \
-    && ls /usr/bin/*_linux_amd64 | xargs -n1 setcap cap_net_bind_service+ep \
-    && mv /usr/bin/server_linux_amd64 /usr/bin/kcp-server \
-    && mv /usr/bin/client_linux_amd64 /usr/bin/kcp-client \
-    && addgroup -g 1998 config \
-    && adduser -D -H -u 60001 kcp \
-    && adduser kcp config
+RUN set -e; \
+    addgroup -g 1000 kcptun; \
+    adduser -H -D -G kcptun -u 1000 kcptun; \
+    :;
 
+USER kcptun:kcptun
 WORKDIR /config
-COPY start.sh /usr/bin/
-CMD ["/usr/bin/start.sh"]
+
+COPY docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["kcptun"]
+
