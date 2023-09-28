@@ -10,7 +10,7 @@ first_letter=$(printf %.1s "$1")
 print_help() {
     if echo "$@" | grep -- "-h" > /dev/null 2>&1; then
         printf "\n"
-        printf "If first arg start with dash, '-', all the arguments will be passed to kcp\n"
+        printf "If first arg start with dash, '-', all the arguments will be passed to kcptun\n"
         printf "Possible environment variables:\n"
         printf "    CONFIG_FILE: path to config file. This environment variable has high priority.\n"
         printf "    BIN: The binary wang to run, available options:\n"
@@ -21,15 +21,15 @@ print_help() {
 
 # if first arg looks like a flag, assume we want to run samba server
 if [ "$first_letter" = '-' ]; then
-    set -- kcp "$@"
+    set -- kcptun "$@"
 fi
 
-if [ "$1" = 'kcp' ]; then
+if [ "$1" = 'kcptun' ]; then
     test -z "$BIN" && echo "no bin environment is specified"
     print_help "$@"
 
     # get the remains other than the first element
-    # EX: Input: kcp -a -c config
+    # EX: Input: kcptun -a -c config
     #     Output: -a -c config
     start=2
     for i in $(seq 1 $((start - 1))); do
