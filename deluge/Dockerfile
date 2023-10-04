@@ -1,18 +1,23 @@
-FROM ubuntu
+FROM alpine
 
-RUN set -eux ; \
-    apt-get update ; \
-    apt-get install -y --no-install-recommends \
-        deluged \
-        deluge-web \
-        gosu \
+RUN set -e; \
+    apk add --no-cache --virtual .runtime-deps \
+        deluge \
+        su-exec \
+        supervisor \
         ; \
-    rm -fr /var/lib/apt/lists/*
+    mkdir /runtime ; \
+    mkdir /config ; \
+    mkdir /root/.config ; \
+    mkdir -p /home/deluge/.config ; \
+    ln -s /config /root/.config/deluge ; \
+    ln -s /config /home/deluge/.config/deluge ; \
+    :;
 
-COPY start.sh /usr/bin/
-CMD ["/usr/bin/start.sh"]
+COPY supervisord.conf init.sh /runtime/
 
+WORKDIR /config
 
-
-
-
+COPY docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["deluge"]
