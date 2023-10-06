@@ -2,6 +2,10 @@
 
 # Environment Variable
 
+### EMAIL
+
+Used for generating letsencrypt certificate.
+
 ### `CERTS`
 
 This environment variable specifies the domains the **letsencrypt** will issue certifications for.
