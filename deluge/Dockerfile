@@ -16,7 +16,7 @@ RUN set -e; \
 
 COPY supervisord.conf init.sh /runtime/
 
-WORKDIR /config
+WORKDIR /runtime
 
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]

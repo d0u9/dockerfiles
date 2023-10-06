@@ -14,7 +14,7 @@ RUN set -e; \
     mkdir /config ; \
     :;
 
-WORKDIR /config
+WORKDIR /runtime
 
 COPY supervisord.conf /runtime/
 COPY --chmod=744 certbot-install.sh /usr/local/bin/
