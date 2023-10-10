@@ -5,9 +5,10 @@ RUN set -e; \
         rsync \
         ; \
     mkdir /config ; \
+    mkdir /runtime ; \
     :;
 
-WORKDIR /config
+WORKDIR /runtime
 
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["docker-entrypoint.sh"]
