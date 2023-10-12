@@ -21,7 +21,7 @@ fi
 
 
 if [ "$PUID" -ne 0 ]; then
-    adduser -D -H -G $UNAME -u $PUID $UNAME
+    adduser -D -H -G $GNAME -u $PUID $UNAME
 else
     UNAME=root
 fi
