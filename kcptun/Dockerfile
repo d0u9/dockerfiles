@@ -3,12 +3,11 @@ FROM alpine as build
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-
 # Note: ${TARGETPLATFORM} will be `linux/amd64`
 #       ${TARGETPLATFORM//\//_} will replace `/` with `_`
 
 RUN set -e; \
-    apk add --no-cache --virtual .build-deps \
+    apk add --no-cache \
         wget \
         tar \
         bash \
@@ -29,9 +28,12 @@ RUN set -e; \
 FROM alpine
 COPY --from=build /usr/local/bin/kcp-client /usr/local/bin/kcp-server /usr/local/bin
 
+ARG UID=3004
+ARG GID=3004
+
 RUN set -e; \
-    addgroup -g 1000 kcptun; \
-    adduser -H -D -G kcptun -u 1000 kcptun; \
+    addgroup -g ${UID} kcptun; \
+    adduser -H -D -G kcptun -u ${GID} kcptun; \
     :;
 
 USER kcptun:kcptun

@@ -1,7 +1,7 @@
 FROM alpine
 
 RUN set -e; \
-    apk add --no-cache --virtual .runtime-deps \
+    apk add --no-cache \
         deluge \
         su-exec \
         supervisor \

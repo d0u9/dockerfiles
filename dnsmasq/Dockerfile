@@ -3,7 +3,7 @@ FROM alpine
 # Don't need to create our own GROUP and USER, Because they are automatically created.
 
 RUN set -e; \
-    apk add --no-cache --virtual .build-deps \
+    apk add --no-cache \
         libcap \
         dnsmasq \
         ; \

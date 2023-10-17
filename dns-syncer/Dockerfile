@@ -1,7 +1,7 @@
 FROM rust:alpine as builder
 
 RUN set -e; \
-    apk add --no-cache --virtual .build-deps \
+    apk add --no-cache \
         git \
         openssl-dev \
         openssl-libs-static \
@@ -17,9 +17,12 @@ RUN set -e; \
 FROM alpine
 COPY --from=builder /usr/local/bin/dns-syncer-rs /usr/local/bin/dns-syncer
 
+ARG UID=3004
+ARG GID=3004
+
 RUN set -e; \
-    addgroup -g 1000 dns-syncer; \
-    adduser -H -D -G dns-syncer -u 1000 dns-syncer; \
+    addgroup -g ${GID} dns-syncer; \
+    adduser -H -D -G dns-syncer -u ${UID} dns-syncer; \
     :;
 
 USER dns-syncer:dns-syncer

@@ -1,7 +1,7 @@
 FROM alpine as builder
 
 RUN set -e; \
-    apk add --no-cache --virtual .build-deps \
+    apk add --no-cache \
         jq \
         wget \
         curl \
@@ -17,12 +17,14 @@ RUN set -e; \
     :;
 
 FROM alpine
-
 COPY --from=builder /build/bin/* /usr/local/bin
 
+ARG UID=3004
+ARG GID=3004
+
 RUN set -e; \
-    addgroup -g 1000 ss; \
-    adduser -H -D -G ss -u 1000 ss; \
+    addgroup -g ${GID} ss; \
+    adduser -H -D -G ss -u ${UID} ss; \
     :;
 
 USER ss:ss

@@ -9,7 +9,7 @@ ARG BUILDPLATFORM
 #       ${TARGETPLATFORM//\//_} will replace `/` with `_`
 
 RUN set -e; \
-    apk add --no-cache --virtual .build-deps \
+    apk add --no-cache \
         wget \
         tar \
         bash \
@@ -28,12 +28,15 @@ RUN set -e; \
 FROM alpine
 COPY --from=builder /usr/local/bin/frpc /usr/local/bin/frps /usr/local/bin/
 
+ARG UID=3004
+ARG GID=3004
+
 RUN set -e; \
-    apk add --no-cache --virtual .runtime-deps \
+    apk add --no-cache \
         libcap \
         ; \
-    addgroup -g 1000 frp; \
-    adduser -D -H -G frp -u 1000 frp; \
+    addgroup -g ${GID} frp; \
+    adduser -D -H -G frp -u ${UID} frp; \
     setcap cap_net_bind_service+ep /usr/local/bin/frpc; \
     setcap cap_net_bind_service+ep /usr/local/bin/frps; \
     :;
