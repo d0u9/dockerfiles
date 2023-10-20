@@ -1,12 +1,20 @@
 FROM alpine
 
+    # apk --no-cache --no-progress add bash samba shadow tini tzdata;
+
 RUN set -e; \
-    apk --no-cache --no-progress upgrade; \
-    apk --no-cache --no-progress add bash samba shadow tini tzdata;
+    apk add --no-cache \
+        samba \
+        shadow \
+        ; \
+    mkdir /runtime ; \
+    mkdir /config ; \
+    :;
 
-COPY docker-entrypoint.sh /usr/local/bin/
-ENTRYPOINT ["docker-entrypoint.sh"]
+WORKDIR /runtime
 
+COPY --chmod=755 init.sh /runtime/
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/
 EXPOSE 139 445
-
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["smbd"]

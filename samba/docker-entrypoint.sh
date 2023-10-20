@@ -1,76 +1,54 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
-create_group() {
-    while read line; do
-        readarray -t -d : fields <<< "$line:"
-        gname=${fields[0]}
-        gid=${fields[1]}
-        if [ -z "$gname" ]; then
-            echo "group name is empty: $line"; exit 1
-        fi
-        gid=${gid:+-g $gid}
-        echo "[GROUP] groupadd $gid $gname"
-        groupadd $gid $gname
-    done < "$1"
-}
+BIN="smbd"
+USER_FILE=${USER_FILE:-""}
+GROUP_FILE=${GROUP_FILE:-""}
+CONFIG_FILE=${CONFIG_FILE:+"-s $CONFIG_FILE"}
+LOG_LEVEL=${LOG_LEVEL:-0}
 
-create_user() {
-    while read line; do
-        readarray -t -d : fields <<< "$line:"
+if [ ! -e "/runtime/container_initialized" ]; then
+    USER_FILE=$USER_FILE GROUP_FILE=$GROUP_FILE /runtime/init.sh
+fi
 
-        uname=${fields[0]}
-        passwd=${fields[1]}
-        uid=${fields[2]}
-        groups_str=${fields[3]}
+first_letter=$(printf %.1s "$1")
 
-        if [ -z "$uname" ]; then
-            echo "user name is empty: $line"; exit 1
-        fi
-        uid=${uid:+-u $uid}
-        groups=${groups_str:+-G $groups_str}
-
-        echo "[USER] useradd -M -N -s /sbin/nologin $uid $groups $uname"
-        useradd -M -N -s /sbin/nologin $uid $groups $uname
-        echo -e "$passwd\n$passwd" | smbpasswd -s -a $uname
-
-    done < "$1"
-}
-
-_main() {
-    # if first arg looks like a flag, assume we want to run samba server
-    if [ "${1:0:1}" = '-' ]; then
-        set -- smbd "$@"
+print_help() {
+    if echo "$@" | grep -- "-h" > /dev/null 2>&1; then
+        printf "\n"
+        printf "If first arg start with dash, '-', all the arguments will be passed to smbd\n"
+        printf "Possible environment variables:\n"
+        printf "    CONFIG_FILE: SAMBA config file\n"
+        printf "    USER_FILE: the file saves user info\n"
+        printf "    GROUP_FILE: the file save group info\n"
+        exit 0
     fi
-
-    if [ "$1" = 'smbd' ]; then
-        if [ ! -f /inited ]; then
-            echo "init container..."
-            if [ -z "$SMB_GROUP_FILE" ]; then
-                echo "smb:" > /tmp/nogroup
-                export SMB_GROUP_FILE=/tmp/nogroup
-            fi
-
-            if [ -z "$SMB_USER_FILE" ]; then
-                echo "smb:badpassword::" > /tmp/nouser
-                export SMB_USER_FILE=/tmp/nouser
-            fi
-
-            create_group $SMB_GROUP_FILE
-            create_user $SMB_USER_FILE
-            touch /inited
-        fi
-        echo "start smbd..."
-        exec /sbin/tini -- \
-            smbd ${SMB_CONFIG:+-s $SMB_CONFIG} \
-            -F \
-            --no-process-group \
-            -d ${SMB_LOGLEVEL:-0} \
-            --debug-stdout
-    fi
-
-    exec "$@"
 }
 
-_main "$@"
+# if first arg looks like a flag, assume we want to run samba server
+if [ "$first_letter" = '-' ]; then
+    set -- $BIN "$@"
+fi
+
+if [ "$1" = "$BIN" ]; then
+    # get the remains other than the first element
+    # EX: Input: smbd -a -c config
+    #     Output: -a -c config
+    start=2
+    for i in $(seq 1 $((start - 1))); do
+        shift
+    done
+
+    opts="$@"
+    echo "arguments=$opts"
+
+    exec $BIN \
+        ${CONFIG_FILE} \
+        -F \
+        --no-process-group \
+       -d $LOG_LEVEL \
+       --debug-stdout
+fi
+
+exec "$@"
