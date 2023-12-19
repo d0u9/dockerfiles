@@ -21,9 +21,9 @@ RUN set -e ; \
     elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then ffmpeg_arch="linuxarm64" ; \
     else echo "unknow TARGETPLATFORM, exit"; exit 1 ; \
     fi; \
-    echo "$ffmpeg_arch" > /tmp/arch ; \
-    wget -nv -O - "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.0-latest-${ffmpeg_arch}-gpl-6.0.tar.xz" \
-        | tar -xJ ; \
+    jq_regex="^ffmpeg-n.*-${ffmpeg_arch}"; \
+    url=$(curl -s https://api.github.com/repos/yt-dlp/FFmpeg-Builds/releases/latest | jq -r --arg regex "$jq_regex" '.assets[] | select(.name | test($regex)) | .browser_download_url'); \
+    wget -nv -O - "$url" | tar -xJ ; \
     mv /ffmpeg*/bin/* /build/ ; \
     : ;
 
