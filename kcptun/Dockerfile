@@ -1,4 +1,4 @@
-FROM alpine as build
+FROM alpine AS build
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM

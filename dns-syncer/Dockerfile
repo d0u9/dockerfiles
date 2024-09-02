@@ -1,4 +1,4 @@
-FROM rust:alpine as builder
+FROM rust:alpine AS builder
 
 RUN set -e; \
     apk add --no-cache \

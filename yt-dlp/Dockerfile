@@ -1,4 +1,4 @@
-From python:slim as builder
+From python:slim AS builder
 
 # Note: ${TARGETPLATFORM} will be `linux/amd64`
 ARG TARGETPLATFORM
