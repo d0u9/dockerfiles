@@ -3,6 +3,7 @@ set -eu
 
 CONFIG_FILE=${CONFIG_FILE:-/config/smb.conf}
 LOG_LEVEL=${LOG_LEVEL:-1}
+PRIVATE_DIR=${PRIVATE_DIR:-/var/lib/samba/private}
 
 if [ ! -f "$CONFIG_FILE" ]; then
     CONFIG_FILE=/etc/samba/smb.conf
@@ -52,10 +53,15 @@ create_users() {
             echo "Invalid user name: $user_name" >&2
             exit 1
         }
-        [ -n "$password" ] || {
+        # A password here is optional when PASSDB_FILE supplies the
+        # accounts: the entries in that file hold NT hashes, so the only
+        # thing left for this record to do is give the kernel a uid to own
+        # files with. Without PASSDB_FILE this is the only place a password
+        # can come from, so it is still required.
+        if [ -z "$password" ] && [ -z "${PASSDB_FILE:-}" ]; then
             echo "Missing password for user: $user_name" >&2
             exit 1
-        }
+        fi
         [ -z "$rest" ] || {
             echo "Invalid user record for $user_name" >&2
             exit 1
@@ -105,15 +111,41 @@ create_users() {
             IFS=$old_ifs
         fi
 
-        printf '%s\n%s\n' "$password" "$password" | smbpasswd -s -a "$user_name" >/dev/null
+        [ -z "$password" ] || printf '%s\n%s\n' "$password" "$password" | smbpasswd -s -a "$user_name" >/dev/null
     done < "$user_file"
+}
+
+# import_passdb loads accounts from a file in smbpasswd format, so the
+# accounts can be supplied as NT hashes rather than as plaintext. It is what
+# lets a generated deployment put an account table on the file server without
+# putting the passwords there: the hash is what SMB proves knowledge of.
+#
+# The file is imported rather than used as the passdb backend directly, so
+# smbd keeps writing its own state to PRIVATE_DIR and the directory the
+# accounts are mounted from can stay read-only.
+import_passdb() {
+    passdb_file=$1
+
+    [ -f "$passdb_file" ] || {
+        echo "PASSDB_FILE not found: $passdb_file" >&2
+        exit 1
+    }
+    mkdir -p "$PRIVATE_DIR"
+    pdbedit \
+        --configfile="$CONFIG_FILE" \
+        -i "smbpasswd:$passdb_file" \
+        -e "tdbsam:$PRIVATE_DIR/passdb.tdb" >/dev/null
 }
 
 [ -z "${GROUP_FILE:-}" ] || create_groups "$GROUP_FILE"
 [ -z "${USER_FILE:-}" ] || create_users "$USER_FILE"
 
-mkdir -p /run/samba /var/lib/samba/private /var/log/samba
+mkdir -p /run/samba "$PRIVATE_DIR" /var/log/samba
 testparm -s "$CONFIG_FILE" >/dev/null
+
+# After the POSIX accounts exist: an entry names an account by name, and
+# importing one before the account is there leaves it unresolvable.
+[ -z "${PASSDB_FILE:-}" ] || import_passdb "$PASSDB_FILE"
 
 if [ "${1:-}" = "smbd" ]; then
     shift
