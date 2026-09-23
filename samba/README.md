@@ -25,11 +25,18 @@ accounts are supplied as NT hashes:
 
 ```text
 # smbpasswd: name:uid:LM:NT:[flags]:LCT-xxxxxxxx:
-alice-laptop:1000:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:8846F7EAEE8FB117AD06BDD830B7586C:[U          ]:LCT-00000000:
+alice-laptop:1000:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:8846F7EAEE8FB117AD06BDD830B7586C:[U          ]:LCT-5E0BE100:
 ```
 
+The `LCT-` field is when the password was last changed, as eight hex digits
+of Unix time. It must not be `LCT-00000000`: Samba reads a password last set at
+time zero as one that must be changed at next logon, and refuses every logon
+with "password must change".
+
 The file is imported into Samba's own passdb at startup, after the POSIX
-accounts exist, so the directory it is mounted from can stay read-only. With
+accounts exist, so the directory it is mounted from can stay read-only. The
+passdb is rebuilt from it on every start rather than added to, so an account
+removed from the file stops logging in once the container restarts. With
 `PASSDB_FILE` set, the password field in `users.txt` may be empty: those
 records then only give the kernel a uid to own files with.
 

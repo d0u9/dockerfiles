@@ -137,6 +137,17 @@ import_passdb() {
         -e "tdbsam:$PRIVATE_DIR/passdb.tdb" >/dev/null
 }
 
+# With PASSDB_FILE the accounts are that file, entire, so the passdb is
+# rebuilt from it on every start rather than added to. The passdb lives on a
+# persistent volume: importing into it only adds, so an account removed from
+# the file would keep logging in, and an entry imported with a bad field would
+# outlive the fix. Removing it first makes the file the whole truth. It
+# happens before create_users, so a plaintext account users.txt still adds is
+# kept.
+if [ -n "${PASSDB_FILE:-}" ]; then
+    rm -f "$PRIVATE_DIR/passdb.tdb"
+fi
+
 [ -z "${GROUP_FILE:-}" ] || create_groups "$GROUP_FILE"
 [ -z "${USER_FILE:-}" ] || create_users "$USER_FILE"
 
