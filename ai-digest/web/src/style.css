@@ -135,7 +135,8 @@ th { font-size: .8em; }
 .cal-lunar { font-size: 1.05em; }
 .cal-term { color: var(--link); margin-left: 4px; }
 .cal-holidays { margin-top: 8px; font-size: .88em; }
-.cal-holidays li { display: flex; gap: 6px; align-items: baseline; }
+.cal-holidays li { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
+.cal-holidays li > :nth-child(2) { min-width: 5em; }
 .cal-holidays li > .muted:first-child { flex: none; font-size: .9em; }
 .cal-when { margin-left: auto; white-space: nowrap; font-size: .9em; }
 .cal-today { font-weight: 600; }
@@ -231,8 +232,13 @@ th { font-size: .8em; }
 }
 .pager button[aria-current="true"] { color: var(--fg); }
 .pager button[aria-current="true"] .pager-dot { height: 26px; background: var(--link); border-color: var(--link); }
-.pager-label { opacity: 0; transform: translateX(6px); transition: opacity .25s, transform .25s; }
-.pager:hover .pager-label, .pager button[aria-current="true"] .pager-label { opacity: 1; transform: none; }
+/* Labels show on hover only, on their own background: the page's right
+   padding reserves room for the dots, not for the labels over the cards. */
+.pager-label {
+  opacity: 0; transform: translateX(6px); transition: opacity .25s, transform .25s;
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
+}
+.pager:hover .pager-label, .pager button:focus-visible .pager-label { opacity: 1; transform: none; }
 
 @media (max-width: 760px) {
   .pager { display: none; }
