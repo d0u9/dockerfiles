@@ -171,11 +171,12 @@ function columnsFor(t: Today, user: string): Card[][] {
  */
 /**
  * The dashboard is laid out for a screen FIT pixels high: the calendar's
- * whole month and the chosen day beneath it, beside the weather. A shorter
+ * whole month and the chosen day beneath it, beside the weather with its open
+ * place and a row either side. A shorter
  * screen scales the whole dashboard down to fit rather than cutting them, to
  * no less than MIN_ZOOM; below that the page scrolls instead (SCROLLING).
  */
-const FIT = 960;
+const FIT = 1100;
 const MIN_ZOOM = 0.72;
 
 function useFit(): number {

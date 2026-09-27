@@ -93,14 +93,19 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 .dash-news, .dash-calendar, .dash-markets { flex-grow: 1; }
 /* Small cards keep their size; the big ones give way and scroll. */
 .dash-clocks, .dash-links { flex-shrink: 0; }
-/* The weather gives way to the calendar, down to its place and the next hours. */
-.dash-weather { flex: 0 1 300px; min-height: 260px; }
+/* The weather gives way to the calendar, down to the open place whole and a
+   row either side of it (FIT in home.tsx allows for both). */
+.dash-weather { flex: 0 1 auto; min-height: 380px; }
 /* What does not fit scrolls inside its card, without a bar: the bottom fades
    out and a small button says more is below (Scroller in ui.tsx). */
 .scroller { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.scroller-body { min-height: 0; overflow: auto; scrollbar-width: none; overscroll-behavior: contain; }
+.scroller-body { position: relative; min-height: 0; overflow: auto; scrollbar-width: none; overscroll-behavior: contain; }
 .scroller-body::-webkit-scrollbar { display: none; }
 .scroller[data-more] > .scroller-body { mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }
+/* A card's head stays put while what is under it scrolls. */
+.scroller-body > .card-head:first-child {
+  position: sticky; top: 0; z-index: 2; margin-bottom: 0; padding-bottom: 12px; background: var(--card);
+}
 .scroller-more {
   position: absolute; left: 50%; bottom: 2px; transform: translate(-50%, 4px); opacity: 0; pointer-events: none;
   padding: 3px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted);
@@ -229,7 +234,7 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 .wx-facts dt { color: var(--muted); }
 .wx-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
 .hourly { width: 100%; height: auto; max-height: 96px; margin: 8px 0 6px; overflow: visible; }
-.hourly-empty { aspect-ratio: 300 / 92; }
+.hourly-empty { aspect-ratio: 300 / 92; max-height: 96px; }
 .temp-line { fill: none; stroke: #f5a524; stroke-width: 2; stroke-linejoin: round; }
 .rain { fill: var(--link); opacity: .35; }
 .t-label, .h-label { font-size: 8px; text-anchor: middle; fill: var(--muted); }

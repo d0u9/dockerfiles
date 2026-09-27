@@ -2,7 +2,7 @@
 // the calendar with holidays, and the weather. Everything live here is
 // fetched by the browser from public services; nothing is stored.
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Clock, HolidayRegion, Weather } from "../../shared/types.ts";
 import { SkyIcon, sky, useLiveWeather } from "./weather.tsx";
 
@@ -437,11 +437,28 @@ export function WeatherCard({ saved }: { saved: Weather }) {
   const [open, setOpen] = useState(0);
   const place = weather.places[open] ?? weather.places[0]!;
   const detail = useDetail(place.latitude, place.longitude);
+  const list = useRef<HTMLUListElement>(null);
+  // Keep the open place whole in view, with the rows either side of it, so
+  // the next one to click is always there.
+  useLayoutEffect(() => {
+    const ul = list.current, box = ul?.closest(".scroller-body");
+    if (!ul || !box) return;
+    const rows = [...ul.children] as HTMLElement[];
+    const first = rows[Math.max(0, open - 1)]!, last = rows[Math.min(rows.length - 1, open + 1)]!;
+    // Offsets rather than client rectangles, which the dashboard's zoom scales.
+    // Past the last row shown, room for the card's fade, so that row is clear.
+    const fade = last === rows.at(-1) ? 0 : 28;
+    // Above the first, the card's head, which stays over what scrolls.
+    const head = (box.querySelector(":scope > .card-head") as HTMLElement | null)?.offsetHeight ?? 0;
+    const top = first.offsetTop - head, bottom = last.offsetTop + last.offsetHeight + fade;
+    if (top < box.scrollTop) box.scrollTop = Math.max(0, top);
+    else if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = Math.min(top, bottom - box.clientHeight);
+  }, [open, detail]);
   const r = (n: number) => Math.round(n);
   return (
     <>
       <div className="card-head"><h2>天气</h2><span className="muted">{live ? "现在" : `${saved.fetched_at.slice(11, 16)} 保存`}</span></div>
-      <ul className="wx-list">
+      <ul className="wx-list" ref={list}>
         {weather.places.map((p, i) => i === open ? (
           <li key={`${p.name}@${p.latitude},${p.longitude}`} className="wx-open">
             <div className="wx-here">
