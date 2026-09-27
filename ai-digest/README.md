@@ -10,7 +10,8 @@ secrets and data are all mounted at run time. The design, data formats and
 reasons are in [DESIGN.md](DESIGN.md).
 
 ```
-ghcr.io/d0u9/ai-digest:<version>      linux/amd64, linux/arm64
+d0u9/ai-digest:<version>              linux/amd64, linux/arm64, on Docker Hub
+ghcr.io/d0u9/ai-digest:<version>      the same, from GitHub Actions
 ```
 
 ## Commands
@@ -106,7 +107,7 @@ docker run --rm \
   -v "$PWD/config:/config:ro" \
   -v "$PWD/spool:/spool" -v "$PWD/data:/data" -v "$PWD/web:/web" \
   -v "$PWD/codex:/codex" -v "$PWD/secrets:/secrets:ro" \
-  ghcr.io/d0u9/ai-digest:0.1.0 pull --user alice
+  d0u9/ai-digest:0.1.0 pull --user alice
 ```
 
 ## Development
@@ -125,15 +126,10 @@ npm run dev -w web       # the website against that data
 ## Building
 
 ```sh
-./build.sh [version]
-```
-
-builds `ai-digest:<version>` (default `dev`) for this machine only, into the
-local image store, to try before publishing.
-
-```sh
 ./buildx.sh 0.1.0
 ```
 
-builds both architectures and pushes to ghcr. Pushing a tag
-`ai-digest/v0.1.0` does the same in GitHub Actions.
+builds both architectures and pushes them to Docker Hub as
+`d0u9/ai-digest:0.1.0` and `:latest`, after `docker login`. On an amd64 host
+the arm64 half runs under QEMU. Pushing a tag `ai-digest/v0.1.0` builds the
+same image in GitHub Actions and pushes it to ghcr.io.

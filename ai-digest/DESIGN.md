@@ -34,7 +34,7 @@ caused several problems:
 Goals:
 
 - Programs and pages live in this directory and build into one image,
-  `ghcr.io/d0u9/ai-digest`, deployed by pinned version.
+  `d0u9/ai-digest` on Docker Hub, deployed by pinned version.
 - The image holds no names, passwords, places or preferences; all of them
   are read at run time from configuration and mounted files.
 - Each day's raw data is pushed to a private repository, the **data
@@ -58,7 +58,7 @@ Non-goals:
 | What | Where | Visibility |
 |---|---|---|
 | Program and page source | `d0u9/dockerfiles`, directory `ai-digest/` | public |
-| Image | `ghcr.io/d0u9/ai-digest:<version>` | public |
+| Image | `d0u9/ai-digest:<version>` on Docker Hub, also `ghcr.io/d0u9/ai-digest` | public |
 | Daily data | the data repository, e.g. `<owner>/ai-digest-data` | **private** |
 | Deployment configuration, prompts | the private configuration repository | private |
 
@@ -75,7 +75,7 @@ ai-digest/
   DESIGN.md            this document
   README.md            usage: configuration format, mounts, commands
   Dockerfile           two-stage build
-  buildx.sh            local build, for debugging or when CI is unavailable
+  buildx.sh            build both architectures and push to Docker Hub
   package.json         npm workspaces: tool, web; one lockfile
   tsconfig.base.json
   shared/
@@ -447,8 +447,9 @@ every image in this repository, it is built for both `linux/amd64` and
   it without logging in.
 - The version is baked into the image (`AI_DIGEST_VERSION`) and recorded in
   every digest as `run.tool`.
-- `buildx.sh` builds the same thing and pushes to the same place, for local
-  debugging.
+- `buildx.sh` builds the same image by hand and pushes it to Docker Hub as
+  `d0u9/ai-digest:<version>` and `:latest`, after `docker login`. `latest` is
+  for trying the image; deployments still pin a version.
 
 ## 8. Commands
 
@@ -617,7 +618,7 @@ The deployment configuration shrinks to deployment only:
 - It renders the `/config` directory (`config.json` and the prompts),
   `compose.yaml`, `run` and `install.sh`.
 - The image and version are set there, for example
-  `image: ghcr.io/d0u9/ai-digest` and `version: 0.1.0`.
+  `image: d0u9/ai-digest` and `version: 0.1.0`.
 - `install.sh`, run as the deploying user without root:
   1. `docker pull` the pinned version.
   2. Place `config.json`, `compose.yaml` and `run`.
