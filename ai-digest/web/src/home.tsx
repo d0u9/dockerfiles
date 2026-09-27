@@ -12,6 +12,7 @@ import type { Digest, LinkGroup, Month, SiteIndex } from "../../shared/types.ts"
 import { loadDigest, loadIndex, loadMonth, safeUrl, useLoad, weekday } from "./data.ts";
 import { Timeline } from "./timeline.tsx";
 import { Link, Show } from "./ui.tsx";
+import { MarketsCard } from "./markets.tsx";
 import { CalendarCard, Clocks, WeatherCard } from "./today.tsx";
 
 interface Today {
@@ -40,37 +41,60 @@ function remember(user: string): void {
   try { localStorage.setItem(CHOSEN, user); } catch { /* storage blocked */ }
 }
 
-/** The chosen person's news, as a way in: how much there is today, under
- * which sections, and the day's highlights, each linking to its article. The
- * digest itself is on its own page. */
+/**
+ * The chosen person's news: the day's summary to read first, the articles
+ * most worth opening, then the sections as a way into the full digest. What
+ * does not fit scrolls inside the card.
+ */
 function NewsCard({ user, date, digest }: { user: string; date: string; digest: Digest | undefined }) {
   if (!digest) {
-    return <><h2>新闻</h2><p className="muted">{user} 今天还没有日报。</p></>;
+    return <><div className="card-head"><h2>新闻</h2></div><p className="muted">{user} 今天还没有日报。</p></>;
   }
+  const { stats } = digest;
   return (
     <>
-      <Link className="news-card" to={`${user}/${date}`}>
-        <div className="card-head"><h2>新闻</h2><span className="card-more">日报 →</span></div>
-        <div className="news-count"><strong>{digest.stats.selected}</strong> 篇</div>
-        <div className="muted news-sections">{digest.sections.map((s) => s.title).join(" · ")}</div>
-      </Link>
-      {digest.highlights.length > 0 && (
-        <>
-          <h3 className="news-top">今日要点</h3>
-          <ol className="highlights">
-            {digest.highlights.slice(0, 5).map((h) => {
-              const article = digest.articles[h.article];
-              if (!article) return null;
-              const href = safeUrl(article.url);
-              return (
-                <li key={h.article} title={h.why}>
-                  {href ? <a href={href} rel="noopener noreferrer" target="_blank">{article.title}</a> : article.title}
-                </li>
-              );
-            })}
-          </ol>
-        </>
-      )}
+      <div className="card-head">
+        <h2>新闻</h2>
+        <Link className="card-action" to={`${user}/${date}`}>读完整日报 →</Link>
+      </div>
+      <div className="news-scroll">
+        <p className="news-stats">
+          精选 <strong>{stats.selected}</strong> 篇{stats.pulled !== undefined && <> · 共读 {stats.pulled} 篇</>}
+          {" · "}{digest.sections.length} 个分组
+        </p>
+        <p className="news-lead">{digest.summary}</p>
+        {digest.highlights.length > 0 && (
+          <section>
+            <h3 className="news-label">值得读原文</h3>
+            <ol className="picks">
+              {digest.highlights.slice(0, 5).map((h) => {
+                const article = digest.articles[h.article];
+                if (!article) return null;
+                const href = safeUrl(article.url);
+                return (
+                  <li key={h.article}>
+                    {href
+                      ? <a className="pick-title" href={href} rel="noopener noreferrer" target="_blank">{article.title}</a>
+                      : <span className="pick-title">{article.title}</span>}
+                    <span className="pick-meta">{article.feed}</span>
+                    <span className="pick-why">{h.why}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
+        <section>
+          <h3 className="news-label">分组</h3>
+          <div className="chips">
+            {digest.sections.map((s, i) => (
+              <Link className="chip" to={`${user}/${date}/${i + 1}`} key={s.title}>
+                {s.title}<span className="chip-count">{s.items.length}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
     </>
   );
 }
@@ -80,6 +104,7 @@ function NewsCard({ user, date, digest }: { user: string; date: string; digest: 
 function LinksCard({ groups }: { groups: LinkGroup[] }) {
   return (
     <>
+      <div className="card-head"><h2>链接</h2></div>
       {groups.map((group) => (
         <section className="link-group" key={group.title}>
           <h3>{group.title}</h3>
@@ -100,25 +125,29 @@ function LinksCard({ groups }: { groups: LinkGroup[] }) {
 interface Card { key: string; render: (user: string) => ReactNode }
 
 /**
- * The cards on the dashboard, in columns: the chosen person's news and the
- * link groups; the weather; the clocks and the calendar. Only the news is a
- * person's. A card with nothing to show is left out; an empty column too.
- * Add new kinds of content here.
+ * The cards on the dashboard, in three columns read left to right by weight:
+ * the chosen person's news, the only card that is a person's, gets the widest
+ * column; then the weather and the calendar; then the clocks, the markets
+ * and the links. A card with nothing to show is left out; an empty column
+ * too. On a phone the cards become one list, in the order the stylesheet
+ * gives them. Add new kinds of content here.
  */
 function columnsFor(t: Today): Card[][] {
-  const { weather } = t.index.latest;
-  const { clocks, holidays, links } = t.index;
+  const { weather, markets: savedMarkets } = t.index.latest;
+  const { clocks, holidays, links, markets } = t.index;
+  const hasMarkets = markets.rates.length > 0 || markets.quotes.length > 0 || savedMarkets !== null;
   return [
+    [{ key: "news", render: (user: string) => <NewsCard user={user} date={t.date} digest={t.digests[user]} /> }],
     [
-      { key: "news", render: (user: string) => <NewsCard user={user} date={t.date} digest={t.digests[user]} /> },
+      ...(weather?.places.length ? [{ key: "weather", render: () => <WeatherCard saved={weather} /> }] : []),
+      { key: "calendar", render: () => <CalendarCard regions={holidays} /> },
+    ],
+    [
+      ...(clocks.length ? [{ key: "clocks", render: () => <Clocks clocks={clocks} /> }] : []),
+      ...(hasMarkets ? [{ key: "markets", render: () => <MarketsCard config={markets} saved={savedMarkets} /> }] : []),
       ...(links.some((g) => g.items.length)
         ? [{ key: "links", render: () => <LinksCard groups={links.filter((g) => g.items.length)} /> }]
         : []),
-    ],
-    weather?.places.length ? [{ key: "weather", render: () => <WeatherCard saved={weather} /> }] : [],
-    [
-      ...(clocks.length ? [{ key: "clocks", render: () => <Clocks clocks={clocks} /> }] : []),
-      { key: "calendar", render: () => <CalendarCard regions={holidays} /> },
     ],
   ].filter((c) => c.length);
 }
@@ -136,9 +165,12 @@ function Dashboard({ today, onHistory }: { today: Today; onHistory: () => void }
   return (
     <section className="dashboard">
       <header className="dash-head">
-        <h1>{isToday ? "今天" : "最新"} <span className="muted">{today.date} {weekday(today.date)}</span></h1>
+        <div>
+          <h1>{Number(today.date.slice(5, 7))}月{Number(today.date.slice(8))}日 {weekday(today.date)}</h1>
+          <p className="dash-sub">{isToday ? "今天的日报" : `最新一期是 ${today.date} 的`}</p>
+        </div>
         {users.length > 1 && (
-          <div className="tabs" role="tablist">
+          <div className="tabs" role="tablist" aria-label="读谁的日报">
             {users.map((u) => (
               <button key={u} role="tab" aria-selected={u === user}
                 onClick={() => { setUser(u); remember(u); }}>{u}</button>
@@ -199,14 +231,17 @@ function History({ index, skip }: { index: SiteIndex; skip: string }) {
 }
 
 type Page = "today" | "history";
+/** Where the dashboard is taller than the screen and scrolls like any page;
+ * the same query as in style.css. */
+const SCROLLING = "(max-width: 1100px), (max-height: 680px)";
 const SWITCH_MS = 750;
 
 /**
  * Two pages, switched rather than scrolled: on a wide screen one turn of the
  * wheel, one swipe or one key moves the whole dashboard away and brings the
  * history up, and back again from the top of the history. Inside the history
- * the page scrolls normally. On a narrow screen, where the dashboard is taller
- * than the screen, nothing is intercepted.
+ * the page scrolls normally. Where the dashboard is taller than the screen
+ * (SCROLLING), nothing is intercepted.
  */
 function usePageSwitch(ready: boolean): [Page, (to: Page) => void] {
   const [page, setPage] = useState<Page>("today");
@@ -224,7 +259,7 @@ function usePageSwitch(ready: boolean): [Page, (to: Page) => void] {
 
   useEffect(() => {
     if (!ready) return;
-    const narrow = matchMedia("(max-width: 760px)");
+    const narrow = matchMedia(SCROLLING);
     const historyTop = () => {
       const h = document.getElementById("history");
       return h ? h.getBoundingClientRect().top + scrollY : Infinity;

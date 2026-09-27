@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Clock, HolidayRegion, LinkGroup } from "../../shared/types.ts";
+import type { Clock, HolidayRegion, LinkGroup, MarketsConfig } from "../../shared/types.ts";
 
 /** The directory holding rules.md, schema.json and known_hosts: tool/assets
  * from the source tree; the image sets AI_DIGEST_ASSETS for the compiled one. */
@@ -56,6 +56,7 @@ export interface Config {
   links: LinkGroup[];
   clocks: Clock[];
   holidays: HolidayRegion[];
+  markets: MarketsConfig;
   data: { branch: string };
 }
 
@@ -119,7 +120,7 @@ export function loadConfig(directory = dirs.config): Config {
     throw new Failure(`${file}: ${(e as Error).message}`);
   }
   if (!isObject(raw)) throw new Failure(`${file}: must be an object`);
-  unknownKey("", raw, ["version", "timezone", "users", "weather", "links", "clocks", "holidays", ...Object.keys(SCHEMA)]);
+  unknownKey("", raw, ["version", "timezone", "users", "weather", "links", "clocks", "holidays", "markets", ...Object.keys(SCHEMA)]);
   if ((raw.version ?? 1) !== 1) throw new Failure(`config: version ${JSON.stringify(raw.version)} is not supported`);
 
   const out: Record<string, unknown> = { version: 1 };
@@ -146,8 +147,8 @@ export function loadConfig(directory = dirs.config): Config {
   const settings: Record<string, UserSettings> = {};
   for (const [name, given] of Object.entries(users)) {
     if (!NAME.test(name)) throw new Failure(`config: user name ${JSON.stringify(name)} must match ${NAME.source}`);
-    // The day's weather sits beside each person's <user>.json.
-    if (name === "weather") throw new Failure("config: weather cannot be a user name");
+    // The day's weather and markets sit beside each person's <user>.json.
+    if (name === "weather" || name === "markets") throw new Failure(`config: ${name} cannot be a user name`);
     const s = given ?? {};
     if (!isObject(s)) throw new Failure(`config: users.${name} must be an object`);
     unknownKey(`users.${name}.`, s, ["sections", "skip_feeds"]);
@@ -222,6 +223,28 @@ export function loadConfig(directory = dirs.config): Config {
     unknownKey(`holidays[${i}].`, h, ["name", "country", "region"]);
   });
   out.holidays = holidays;
+
+  // Exchange rates by ISO 4217 code, and quotes by Yahoo Finance symbol.
+  const markets = raw.markets ?? {};
+  if (!isObject(markets)) throw new Failure("config: markets must be an object");
+  unknownKey("markets.", markets, ["rates", "quotes"]);
+  const rates = markets.rates ?? [];
+  const quotes = markets.quotes ?? [];
+  if (!Array.isArray(rates) || !Array.isArray(quotes)) throw new Failure("config: markets.rates and markets.quotes must be lists");
+  rates.forEach((r: unknown, i) => {
+    if (!isObject(r) || Object.keys(r).sort().join() !== "base,quote"
+      || typeof r.base !== "string" || !/^[A-Z]{3}$/.test(r.base)
+      || typeof r.quote !== "string" || !/^[A-Z]{3}$/.test(r.quote)) {
+      throw new Failure(`config: markets.rates[${i}] must have exactly base and quote, three-letter currency codes`);
+    }
+  });
+  quotes.forEach((q: unknown, i) => {
+    if (!isObject(q) || Object.keys(q).sort().join() !== "name,symbol"
+      || typeof q.name !== "string" || !q.name || typeof q.symbol !== "string" || !/^[\w^.=-]{1,20}$/.test(q.symbol)) {
+      throw new Failure(`config: markets.quotes[${i}] must have exactly name and a Yahoo Finance symbol`);
+    }
+  });
+  out.markets = { rates, quotes };
 
   for (const [section, key, variable] of ENV) {
     const value = process.env[variable];

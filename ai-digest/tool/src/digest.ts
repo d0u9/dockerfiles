@@ -6,6 +6,7 @@
 //     spool/<user>.pulled.jsonl    every pulled article's metadata and status (5.4)
 //     spool/prompts/<sha256>.md    the prompt that was sent
 //     spool/weather.json           the day's weather, unless the day has it (5.3)
+//     spool/markets.json           the day's rates and quotes, likewise
 //
 // The model never writes a title or a link. Each article is handed to it
 // under a number, it answers with numbers and its own prose, and the titles
@@ -18,7 +19,8 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { Article, Digest, PulledArticle, Weather } from "../../shared/types.ts";
+import type { Article, Digest, Markets, PulledArticle, Weather } from "../../shared/types.ts";
+import { fetchMarkets } from "./markets.ts";
 import {
   ASSETS, type Config, Failure, type Moment, type Place, VERSION, dayDir, dirs, log, now,
   readJson, readJsonl, readText, sha256, userOrFail, writeAtomic, writeJson, writeJsonl,
@@ -208,6 +210,16 @@ async function weather(config: Config, moment: Moment): Promise<void> {
   if (result) writeJson(spooled, result);
 }
 
+/** Fetch the day's rates and quotes once, like the weather. */
+async function markets(config: Config, moment: Moment): Promise<void> {
+  if (!config.markets.rates.length && !config.markets.quotes.length) return;
+  const spooled = path.join(dirs.spool, "markets.json");
+  const stored = path.join(dayDir(dirs.data, moment.date), "markets.json");
+  if (fs.existsSync(stored) || readJson<Markets>(spooled)?.date === moment.date) return;
+  const result = await fetchMarkets(config.markets, moment);
+  if (result) writeJson(spooled, result);
+}
+
 // ---- the command -----------------------------------------------------------------
 
 /** The rows without their text, as the data repository keeps them. */
@@ -224,7 +236,7 @@ export async function run(config: Config, user: string): Promise<void> {
   const pulled = readJsonl<Spooled>(path.join(dirs.spool, `${user}.articles.jsonl`));
   const sent = pulled.filter((a) => a.status === "sent");
 
-  await weather(config, moment);
+  await Promise.all([weather(config, moment), markets(config, moment)]);
   const digestPath = path.join(dirs.spool, `${user}.json`);
   const pulledPath = path.join(dirs.spool, `${user}.pulled.jsonl`);
   for (const stale of [digestPath, pulledPath]) fs.rmSync(stale, { force: true });

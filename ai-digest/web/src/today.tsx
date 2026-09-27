@@ -76,7 +76,7 @@ export function Clocks({ clocks }: { clocks: Clock[] }) {
   const now = useMinute();
   return (
     <>
-      <h2>时钟</h2>
+      <div className="card-head"><h2>时钟</h2></div>
       <div className="clocks">
         {clocks.map((c) => {
           const w = wall(now, c.timezone);
@@ -165,7 +165,7 @@ export function CalendarCard({ regions }: { regions: HolidayRegion[] }) {
     .slice(0, 4);
   return (
     <>
-      <h2>日历</h2>
+      <div className="card-head"><h2>日历</h2></div>
       <div className="cal-lunar">农历 {lunar(now)}</div>
       <div className="muted">
         {term.date === today ? <>今天<strong className="cal-term">{term.name}</strong></> : <>{term.name} · {md(term.date)}（{inDays(daysUntil(today, term.date))}）</>}

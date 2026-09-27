@@ -3,7 +3,7 @@
 A daily digest of RSS articles. Each person's unread articles are pulled from
 FreshRSS, digested by `codex`, committed to a private data repository, and
 published as a static website with a one-screen dashboard (news, weather,
-clocks, calendar, links) and a timeline of earlier days.
+clocks, calendar, markets) and a timeline of earlier days.
 
 The image holds the tool and the website only. Configuration, prompts,
 secrets and data are all mounted at run time. The design, data formats and
@@ -68,6 +68,10 @@ key is an error:
   ],
   "clocks": [{"name": "Here", "timezone": "Europe/Berlin"}, {"name": "East", "timezone": "Asia/Tokyo"}],
   "holidays": [{"name": "Example", "country": "AU", "region": "AU-NSW"}],
+  "markets": {
+    "rates": [{"base": "EUR", "quote": "USD"}],
+    "quotes": [{"name": "Example Index", "symbol": "^XYZ"}]
+  },
   "data": {"branch": "main"}
 }
 ```
@@ -76,6 +80,8 @@ key is an error:
 - `links`: groups of `http`/`https` links shown on the dashboard.
 - `clocks`: analogue clocks, one IANA time zone each.
 - `holidays`: ISO 3166 country codes, optionally with a subdivision.
+- `markets`: exchange rates by ISO 4217 code, quotes by Yahoo Finance
+  symbol. `digest` saves them each day with a month's history.
 
 Environment variables override single settings: `AI_DIGEST_SINCE`,
 `AI_DIGEST_MODEL`, `AI_DIGEST_REASONING_EFFORT`, `AI_DIGEST_TIMEOUT`. The
@@ -83,7 +89,9 @@ mount paths can be moved with `AI_DIGEST_CONFIG`, `AI_DIGEST_SPOOL`,
 `AI_DIGEST_DATA`, `AI_DIGEST_WEB` and `AI_DIGEST_SECRETS`.
 
 The website's browser fetches the live weather and air quality from
-Open-Meteo and public holidays from Nager.Date; nothing about them is stored.
+Open-Meteo, current exchange rates from Frankfurter and public holidays from
+Nager.Date. Quotes are shown as `digest` saved them: Yahoo Finance does not
+let a browser on another site read them.
 
 ## Example
 

@@ -1,126 +1,140 @@
+/* ---- tokens -------------------------------------------------------------------
+   One type scale, one spacing step (4px) and one set of colours for every page.
+   Sizes: 12 caption, 13 meta, 15 interface text, 17 reading text, 20 section
+   heading, 28 page title; numbers read at a glance are larger. */
 :root {
-  --fg: #1d1d1f; --muted: #6e6e73; --bg: #fbfbfd; --card: #fff; --line: #e5e5ea; --link: #0a58ca;
+  --fg: #1d1d1f; --muted: #6e6e73; --faint: #8e8e93; --bg: #f5f5f7; --card: #fff; --line: #e5e5ea;
+  --link: #0a58ca; --accent-soft: #eaf1fd; --hover: #f0f0f3;
+  /* Red up, green down: the Chinese convention, for a page written in Chinese. */
+  --up: #d70015; --down: #1f8f3a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 1px rgba(0, 0, 0, .02);
+  --radius: 14px;
+  --gap: 16px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --fg: #f2f2f7; --muted: #a1a1a6; --bg: #111113; --card: #1c1c1e; --line: #2c2c2e; --link: #6ea8fe; }
+  :root {
+    --fg: #f2f2f7; --muted: #a1a1a6; --faint: #7c7c80; --bg: #000; --card: #1c1c1e; --line: #2c2c2e;
+    --link: #6ea8fe; --accent-soft: #16243a; --hover: #2c2c2e;
+    --up: #ff6961; --down: #30d158; --shadow: none;
+  }
 }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--fg);
-  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
 }
 main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
 a { color: var(--link); text-decoration: none; }
-a:hover { text-decoration: underline; }
-h1 { font-size: 1.6em; margin: 0 0 4px; }
-h2 { font-size: 1.2em; margin: 32px 0 8px; }
-.muted { color: var(--muted); font-size: .9em; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 10px 0; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+h1 { font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; margin: 0 0 4px; }
+h2 { font-size: 20px; line-height: 1.3; font-weight: 600; margin: 32px 0 8px; }
+.muted { color: var(--muted); }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 20px; margin: 10px 0; box-shadow: var(--shadow);
+}
 ul { padding-left: 1.2em; }
-li { margin: 6px 0; overflow-wrap: anywhere; }
-nav { margin-bottom: 16px; }
+li { overflow-wrap: anywhere; }
+nav { margin-bottom: 16px; font-size: 13px; }
 a.card { display: block; color: inherit; }
 a.card:hover { text-decoration: none; border-color: var(--link); }
+.linklike { border: 0; background: none; padding: 0; font: inherit; color: var(--link); cursor: pointer; }
 
-/* Each day's row: two people side by side, more wrap, one per row on a phone. */
-.day-row h2 { margin-bottom: 2px; }
+/* A segmented control, for choosing whose digest to read. */
+.tabs { display: inline-flex; background: var(--hover); border-radius: 999px; padding: 3px; gap: 2px; }
+.tabs button, .tabs a {
+  border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500;
+  padding: 4px 14px; border-radius: 999px; cursor: pointer; text-decoration: none; line-height: 1.5;
+}
+.tabs button:hover, .tabs a:hover { color: var(--fg); }
+.tabs [aria-selected="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+  background: var(--hover); border: 0; color: var(--fg); font: inherit; font-size: 13px; line-height: 1.5;
+  white-space: nowrap; cursor: pointer;
+}
+a.chip:hover, button.chip:hover { background: var(--accent-soft); color: var(--link); text-decoration: none; }
+.chip-count { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* ---- lists of days and months ------------------------------------------------ */
 .people { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 8px; }
 .people .card { margin: 0; }
-.day p { margin: 6px 0 0; font-size: .95em; }
+.day p { margin: 6px 0 0; }
 .day .top { font-weight: 600; }
 .empty { opacity: .6; }
 .months { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
 .months .card { margin: 0; }
 
-.strip { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78em; font-variant-numeric: tabular-nums; }
+.strip { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .strip span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-
-.weather-head { font-size: .8em; margin: 16px 0 6px; }
-.weather { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 10px; margin: 0 0 12px; }
-.weather .card { margin: 0; padding: 10px 12px 9px; line-height: 1.3; }
-.weather .name { font-size: .78em; color: var(--muted); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.weather .row { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
-.weather .temp { font-size: 1.75em; font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.weather .sky { font-size: .82em; margin-top: 2px; }
-.weather .range { font-size: .74em; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 1px; }
-.weather .tomorrow {
-  display: flex; align-items: center; gap: 5px; white-space: nowrap; margin-top: 6px; padding-top: 5px;
-  border-top: 1px solid var(--line); font-size: .72em; color: var(--muted); font-variant-numeric: tabular-nums;
-}
-.weather .t-range { margin-left: auto; }
 .icon, .icon-sm { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
-.icon { width: 26px; height: 26px; color: var(--muted); stroke-width: 1.6; }
-.icon-sm { width: 14px; height: 14px; stroke-width: 1.8; }
+.icon { width: 28px; height: 28px; color: var(--muted); stroke-width: 1.6; }
+.icon-sm { width: 15px; height: 15px; stroke-width: 1.8; }
 
-/* ---- home: the dashboard, exactly one screen high ------------------------ */
-main:has(.dashboard) { padding-top: 0; max-width: min(1440px, 100%); padding-left: 32px; padding-right: 56px; }
-@media (max-width: 760px) { main:has(.dashboard) { padding-left: 16px; padding-right: 16px; } }
-.dashboard { height: 100svh; display: flex; flex-direction: column; gap: 10px; padding: 16px 0 10px; }
-.dash-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+/* ---- home: the dashboard, one screen high on a desktop --------------------- */
+main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-left: 32px; padding-right: 56px; }
+.dashboard { height: 100svh; display: flex; flex-direction: column; gap: 16px; padding: 20px 0 12px; }
+.dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
 .dash-head h1 { margin: 0; }
-.dash-head h1 .muted { font-size: .55em; font-weight: 400; margin-left: 6px; }
-/* Three columns: news and links, the weather, the clocks and the calendar. */
-.dash-grid { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 12px; }
-.dash-grid:has(.dash-weather) { grid-template-columns: 1.1fr 1.3fr 1fr; }
-.dash-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-.dash-col > .dash-card { flex: 0 1 auto; }
-.dash-news, .dash-weather, .dash-calendar { flex-grow: 1 !important; }
-.dash-card { margin: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-.card-head h2 { margin: 0; }
-.card-head .muted { font-size: .78em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* What does not fit is cut off and fades out; the link below shows the rest. */
-.card-more { margin-top: auto; align-self: flex-end; font-size: .85em; color: var(--link); }
-.news-card { display: block; color: inherit; }
-.news-card .card-more { margin: 0; }
-.news-card:hover { text-decoration: none; }
-.news-card:hover .card-more { text-decoration: underline; }
-.dash-news:has(.news-card:hover) { border-color: var(--link); }
-.link-group + .link-group { margin-top: 10px; }
-.link-group h3 { margin: 0 0 6px; font-size: .8em; font-weight: 500; color: var(--muted); }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip {
-  padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: .85em; white-space: nowrap;
-}
-a.chip:hover { border-color: var(--link); text-decoration: none; }
-.dash-card h2 { margin: 0 0 6px; font-size: 1.05em; }
-.news-count { font-size: .95em; }
-.news-count strong { font-size: 2.2em; font-weight: 300; letter-spacing: -.03em; margin-right: 4px; }
-.news-sections { margin-top: 6px; }
-.link-list { list-style: none; margin: 0; padding: 0; }
-.link-list li { margin: 0; padding: 5px 0; border-top: 1px solid var(--line); }
-.link-list li:first-child { border-top: 0; }
-.dash-card { overflow: auto; }
-table { border-collapse: collapse; width: 100%; font-size: .88em; }
-td, th { padding: 3px 4px; text-align: left; font-weight: 400; white-space: nowrap; }
-tbody tr + tr td { border-top: 1px solid var(--line); }
-th { font-size: .8em; }
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-.wx-name { overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
-.wx td:nth-child(2), .wx td:nth-child(5) { width: 18px; }
-.change.up { color: #1a8f3c; }
-.change.down { color: #d12f2f; }
-.dash-foot { text-align: center; }
-.tabs { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
-.tabs button {
-  border: 0; background: none; color: var(--muted); font: inherit; font-size: .85em;
-  padding: 2px 12px; border-radius: 999px; cursor: pointer;
-}
-.tabs button[aria-selected="true"] { background: var(--link); color: #fff; }
+.dash-sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 
-.news-top { font-size: .85em; margin: 12px 0 4px; color: var(--muted); font-weight: 500; }
-.highlights { margin: 0; padding-left: 1.3em; font-size: .9em; line-height: 1.45; }
-.highlights li { margin: 0 0 6px; }
-.highlights a { color: var(--fg); }
-.highlights a:hover { color: var(--link); }
+/* Three columns weighted by what is read: the news gets the most room. */
+.dash-grid {
+  flex: 1; min-height: 0; display: grid; gap: var(--gap);
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 1fr);
+}
+.dash-col { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+.dash-card { margin: 0; display: flex; flex-direction: column; min-height: 0; overflow: auto; flex: 0 1 auto; }
+.dash-news, .dash-weather, .dash-markets { flex-grow: 1; }
+.dash-news { padding: 20px 24px 12px; overflow: hidden; }
+
+/* Every card starts the same way: a small label, an action on the right. */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+.card-head h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.card-action { font-size: 13px; font-weight: 500; white-space: nowrap; }
+.card-head > .muted { font-size: 12px; white-space: nowrap; }
+.dash-foot { text-align: center; font-size: 13px; margin: 0; }
+
+/* News: read top to bottom like a front page. */
+.news-scroll {
+  min-height: 0; overflow: auto; margin: 0 -8px; padding: 0 8px 20px;
+  /* What does not fit fades out, so the cut is visibly a cut. */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+.news-stats { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.news-stats strong { color: var(--fg); font-weight: 600; }
+.news-lead { margin: 0 0 20px; font-size: 16px; line-height: 1.75; }
+.news-label { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.news-scroll section + section { margin-top: 20px; }
+
+/* The articles worth opening: the title, its source, then why, each on its own line. */
+.picks { list-style: none; margin: 0; padding: 0; counter-reset: pick; }
+.picks li {
+  counter-increment: pick; position: relative; display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 0 10px 32px; border-top: 1px solid var(--line);
+}
+.picks li:first-child { border-top: 0; padding-top: 2px; }
+.picks li::before {
+  content: counter(pick); position: absolute; left: 0; top: 12px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--link); font-size: 12px; font-weight: 600; line-height: 20px; text-align: center;
+}
+.picks li:first-child::before { top: 4px; }
+.pick-title { color: var(--fg); font-weight: 600; line-height: 1.45; }
+.pick-meta { font-size: 12px; color: var(--faint); }
+.pick-why { font-size: 13px; color: var(--muted); line-height: 1.55; }
 
 /* Clocks: a face like the system's, light by day and dark at night. */
 .clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; }
 .clock { margin: 0; text-align: center; }
-.clock figcaption { display: flex; flex-direction: column; line-height: 1.3; font-size: .85em; margin-top: 4px; }
-.clock figcaption .muted { font-size: .85em; }
-.clock-face { width: 100%; max-width: 72px; aspect-ratio: 1; }
+.clock figcaption { display: flex; flex-direction: column; line-height: 1.35; font-size: 13px; margin-top: 6px; }
+.clock figcaption strong { font-weight: 600; }
+.clock figcaption .muted { font-size: 12px; }
+.clock-face { width: 100%; max-width: 76px; aspect-ratio: 1; }
 .clock-face { --face: #fff; --ink: #1d1d1f; --edge: #d2d2d7; }
 .clock-face.night { --face: #1d1d1f; --ink: #f5f5f7; --edge: #3a3a3c; }
 .clock-dial { fill: var(--face); stroke: var(--edge); stroke-width: 1; }
@@ -132,49 +146,143 @@ th { font-size: .8em; }
 .hand-neck { stroke-width: 1.4; }
 .pin { fill: var(--face); stroke: var(--ink); stroke-width: 1.4; }
 
-.cal-lunar { font-size: 1.05em; }
+/* Calendar. */
+.cal-lunar { font-size: 17px; font-weight: 600; }
+.cal-lunar + .muted { font-size: 13px; }
 .cal-term { color: var(--link); margin-left: 4px; }
-.cal-holidays { margin-top: 8px; font-size: .88em; }
-.cal-holidays li { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
+.link-list { list-style: none; margin: 0; padding: 0; }
+.link-list li { margin: 0; padding: 8px 0; border-top: 1px solid var(--line); }
+.link-list li:first-child { border-top: 0; }
+.cal-holidays { margin-top: 10px; font-size: 14px; }
+.cal-holidays li { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
 .cal-holidays li > :nth-child(2) { min-width: 5em; }
-.cal-holidays li > .muted:first-child { flex: none; font-size: .9em; }
-.cal-when { margin-left: auto; white-space: nowrap; font-size: .9em; }
+.cal-holidays li > .muted:first-child { flex: none; font-size: 12px; }
+.cal-when { margin-left: auto; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 .cal-today { font-weight: 600; }
 
+/* Weather: here in detail, the other places one row each. */
 .wx-here { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wx-now > .muted { font-size: 13px; }
 .wx-big { display: flex; align-items: center; gap: 8px; }
-.wx-big span { font-size: 2.6em; font-weight: 300; letter-spacing: -.03em; line-height: 1.1; }
-.wx-facts { margin: 0; display: grid; grid-template-columns: auto auto; gap: 2px 16px; font-size: .85em; align-content: center; }
+.wx-big span { font-size: 44px; font-weight: 300; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.wx-facts { margin: 0; display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 13px; align-content: center; }
 .wx-facts div { display: contents; }
 .wx-facts dt { color: var(--muted); }
 .wx-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
-.hourly { width: 100%; height: auto; margin: 8px 0 6px; overflow: visible; }
+.hourly { width: 100%; height: auto; margin: 12px 0 8px; overflow: visible; }
 .temp-line { fill: none; stroke: #f5a524; stroke-width: 2; stroke-linejoin: round; }
 .rain { fill: var(--link); opacity: .35; }
 .t-label, .h-label { font-size: 8px; text-anchor: middle; fill: var(--muted); }
 .t-label { fill: var(--fg); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td, th { padding: 6px 4px; text-align: left; font-weight: 400; white-space: nowrap; }
+tbody tr + tr td { border-top: 1px solid var(--line); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.wx-name { overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
+.wx td:nth-child(2) { width: 20px; }
 
-/* A narrow screen cannot hold the grid: the cards stack and the page scrolls. */
-@media (max-width: 760px) {
+/* Markets: the name, a month's trend, the value, the day's change. */
+.mk-group + .mk-group { margin-top: 14px; }
+.mk-group h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.mk-group h3 .muted { font-weight: 400; font-size: 12px; margin-left: 4px; }
+.mk-list { list-style: none; margin: 0; padding: 0; }
+.mk-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 56px auto 64px; align-items: center; gap: 10px;
+  padding: 7px 0; border-top: 1px solid var(--line);
+}
+.mk-row:first-child { border-top: 0; }
+.mk-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-value { font-size: 15px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+.mk-change {
+  justify-self: end; min-width: 60px; padding: 1px 6px; border-radius: 6px; text-align: right;
+  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); background: var(--hover);
+}
+.mk-change.up { color: #fff; background: var(--up); }
+.mk-change.down { color: #fff; background: var(--down); }
+.spark { width: 56px; height: 22px; }
+/* The month's line stays neutral: its colour would contradict the day's
+   change whenever the two point different ways. */
+.spark polyline { fill: none; stroke: var(--faint); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+
+.link-group + .link-group { margin-top: 12px; }
+.link-group h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* A laptop that is short or narrow: two columns, and the page scrolls. */
+@media (max-width: 1100px), (max-height: 680px) {
   .dashboard { height: auto; min-height: 100svh; }
-  .dash-grid { display: flex; flex-direction: column; }
-  /* One list in the order of the day: the time, then the weather, then the news. */
+  .dash-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
+  .dash-col:first-child { grid-row: span 2; }
+  .dash-col:nth-child(3) { grid-column: 2; }
+  .dash-card, .dash-news { overflow: visible; }
+  .news-scroll { overflow: visible; mask-image: none; }
+}
+/* A phone: one list in the order of the day -- the time, the weather, then
+   the news and the markets. */
+@media (max-width: 760px) {
+  main:has(.dashboard) { padding-left: 16px; padding-right: 16px; }
+  .dash-grid { display: flex; flex-direction: column; align-items: stretch; }
   .dash-col { display: contents; }
   .dash-clocks { order: 1; }
   .dash-calendar { order: 2; }
   .dash-weather { order: 3; }
-  .dash-news { order: 4; }
-  .dash-links { order: 5; }
+  .dash-news { order: 4; padding: 16px 20px; }
+  .dash-markets { order: 5; }
+  .dash-links { order: 6; }
+  .dash-head { align-items: flex-start; flex-direction: column; }
 }
 
-.history-head { font-size: 1.3em; margin: 24px 0 0; }
-.tl-end { text-align: center; padding: 24px 0 8px; }
+/* ---- one digest, laid out for reading ------------------------------------- */
+main:has(.reader) { max-width: 760px; padding-top: 28px; }
+.reader-head { margin-bottom: 24px; }
+.reader-head h1 .muted { font-weight: 400; font-size: 20px; margin-left: 4px; }
+.reader-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 12px 0 10px; font-size: 13px; }
+.reader-head .strip { color: var(--muted); }
+.digest { font-size: 17px; line-height: 1.8; }
+.lead {
+  margin: 0 0 16px; padding: 18px 22px; border-radius: var(--radius); background: var(--card);
+  border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 17px; line-height: 1.85;
+}
+/* The sections, kept in reach while scrolling. */
+.toc {
+  position: sticky; top: 0; z-index: 3; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -16px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(1.8) blur(12px); -webkit-backdrop-filter: saturate(1.8) blur(12px);
+}
+.toc::-webkit-scrollbar { display: none; }
+.toc .chip[aria-current="true"] { background: var(--fg); color: var(--bg); }
+.toc .chip[aria-current="true"] .chip-count { color: inherit; opacity: .7; }
+.digest h2 { font-size: 20px; margin: 36px 0 6px; }
+.digest h2 .count { font-size: 13px; font-weight: 500; color: var(--faint); margin-left: 4px; }
+.d-section { scroll-margin-top: 56px; }
+.d-summary { margin: 0 0 8px; font-size: 15px; line-height: 1.7; color: var(--muted); }
+.picks-block .picks { font-size: 15px; }
+.picks-block .pick-title { font-size: 17px; }
+.picks-block .pick-why { font-size: 15px; }
+.items { list-style: none; margin: 0; padding: 0; }
+.items li { padding: 14px 0; border-top: 1px solid var(--line); }
+.items li:first-child { border-top: 0; }
+.item-title { font-weight: 600; line-height: 1.5; color: var(--fg); }
+a.item-title:hover, a.pick-title:hover { color: var(--link); }
+.ext { font-size: .7em; margin-left: 4px; color: var(--faint); font-weight: 400; }
+.item-meta { display: block; font-size: 12px; line-height: 1.6; color: var(--faint); margin-top: 2px; }
+.item-note { margin: 4px 0 0; font-size: 16px; line-height: 1.75; }
+.day-pager {
+  display: flex; justify-content: space-between; gap: 16px; margin: 40px 0 0; padding-top: 16px;
+  border-top: 1px solid var(--line); font-size: 14px;
+}
+@media (max-width: 600px) {
+  .digest { font-size: 16px; }
+  .lead { padding: 14px 16px; font-size: 16px; }
+  .item-note { font-size: 15px; }
+}
 
-/* ---- the timeline ------------------------------------------------------------ */
+/* ---- the history on the home page ------------------------------------------ */
+.history-head { font-size: 22px; margin: 24px 0 0; }
+.tl-end { text-align: center; padding: 24px 0 8px; font-size: 13px; }
 .timeline { --rail: 104px; }
 .tl-month-head {
   position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 0 8px;
-  background: var(--bg); box-shadow: 0 8px 8px -8px var(--bg); font-size: 1.05em;
+  background: var(--bg); box-shadow: 0 8px 8px -8px var(--bg); font-size: 17px;
 }
 .tl-month-head a { color: var(--fg); }
 .tl-days { list-style: none; margin: 0; padding: 0; position: relative; }
@@ -185,9 +293,9 @@ th { font-size: .8em; }
 .tl-day { display: grid; grid-template-columns: var(--rail) 1fr; margin: 0 0 22px; }
 .tl-date {
   position: sticky; top: 48px; align-self: start; display: flex; flex-direction: column;
-  padding-right: 28px; line-height: 1.3;
+  padding-right: 28px; line-height: 1.3; font-size: 13px;
 }
-.tl-md { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-md { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
 .tl-dot {
   position: absolute; left: calc(var(--rail) - 21px); top: 4px; width: 12px; height: 12px;
   border-radius: 50%; background: var(--bg); border: 2px solid var(--link);
@@ -195,10 +303,8 @@ th { font-size: .8em; }
 .tl-body { min-width: 0; }
 .tl-body .people { margin-top: 6px; }
 .tl-body .summary {
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.7;
 }
-
-/* A phone: the date sits above its entries, the rail moves to the edge. */
 @media (max-width: 600px) {
   .timeline { --rail: 22px; }
   .tl-day { grid-template-columns: 1fr; padding-left: var(--rail); }
@@ -216,7 +322,6 @@ th { font-size: .8em; }
 .on-history .dashboard { transform: scale(.94) translateY(-2%); opacity: .35; filter: blur(2px); }
 .on-today .history-head, .on-today .timeline { transform: translateY(48px); opacity: .4; }
 .history { min-height: 100svh; }
-.linklike { border: 0; background: none; padding: 0; font: inherit; color: var(--link); cursor: pointer; }
 
 .pager {
   position: fixed; right: 18px; top: 50%; transform: translateY(-50%); z-index: 5;
@@ -224,7 +329,7 @@ th { font-size: .8em; }
 }
 .pager button {
   display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-direction: row-reverse;
-  border: 0; background: none; padding: 0; cursor: pointer; color: var(--muted); font: inherit; font-size: .78em;
+  border: 0; background: none; padding: 0; cursor: pointer; color: var(--muted); font: inherit; font-size: 12px;
 }
 .pager-dot {
   width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--muted);
@@ -240,7 +345,9 @@ th { font-size: .8em; }
 }
 .pager:hover .pager-label, .pager button:focus-visible .pager-label { opacity: 1; transform: none; }
 
-@media (max-width: 760px) {
+/* Where the dashboard scrolls (SCROLLING in home.tsx), the page switch would
+   fight the reader. */
+@media (max-width: 1100px), (max-height: 680px) {
   .pager { display: none; }
   .on-history .dashboard, .on-today .history-head, .on-today .timeline { transform: none; opacity: 1; filter: none; }
 }

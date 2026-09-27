@@ -6,7 +6,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { Digest, Weather } from "../../shared/types.ts";
+import type { Digest, Markets, Weather } from "../../shared/types.ts";
 import { ASSETS, type Config, Failure, dayDir, dirs, log, now, readJson } from "./common.ts";
 
 const AUTHOR = ["-c", "user.name=ai-digest", "-c", "user.email=ai-digest@localhost"];
@@ -41,6 +41,8 @@ function collect(config: Config, today: string): [string, string][] {
   const target = dayDir(dirs.data, today);
   const weather = path.join(dirs.spool, "weather.json");
   if (readJson<Weather>(weather)?.date === today) moves.push([weather, path.join(target, "weather.json")]);
+  const markets = path.join(dirs.spool, "markets.json");
+  if (readJson<Markets>(markets)?.date === today) moves.push([markets, path.join(target, "markets.json")]);
   for (const user of Object.keys(config.users)) {
     for (const suffix of [".json", ".pulled.jsonl"]) {
       const file = path.join(dirs.spool, user + suffix);

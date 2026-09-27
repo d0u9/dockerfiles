@@ -71,13 +71,42 @@ export interface Weather {
   }[];
 }
 
+/** Which exchange rates and quotes the dashboard shows, from `markets`.
+ * `symbol` is Yahoo Finance's, such as `^GSPC` or `000001.SS`. */
+export interface MarketsConfig {
+  rates: { base: string; quote: string }[];
+  quotes: { name: string; symbol: string }[];
+}
+
+/** One value a day, oldest first. */
+export type Series = { date: string; value: number }[];
+
+/** `markets.json` (5.3): the rates and quotes when the day's digest ran,
+ * each with the month before it for a trend line. */
+export interface Markets {
+  version: 1;
+  date: string;
+  fetched_at: string;
+  rates: { base: string; quote: string; as_of: string; value: number; history: Series }[];
+  quotes: {
+    name: string;
+    symbol: string;
+    currency: string | null;
+    as_of: string;
+    value: number;
+    previous_close: number | null;
+    history: Series;
+  }[];
+}
+
 /** `data/index.json` on the website (9.1). */
 export interface SiteIndex {
   version: 1;
   generated_at: string;
   users: string[];
   months: { month: string; days: number; users: string[] }[];
-  latest: { date: string | null; weather: Weather | null };
+  latest: { date: string | null; weather: Weather | null; markets: Markets | null };
+  markets: MarketsConfig;
   links: LinkGroup[];
   clocks: Clock[];
   holidays: HolidayRegion[];

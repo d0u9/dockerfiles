@@ -1,5 +1,5 @@
-// Weather: the WMO code table, line icons, the cards on the home page and a
-// day's page, and the small strip in each day's row.
+// Weather: the WMO code table, line icons, the live weather, and the small
+// strip in each day's row and at the top of a day's page.
 
 import { useEffect, useState } from "react";
 import type { DailyWeather, Weather } from "../../shared/types.ts";
@@ -97,45 +97,6 @@ export function useLiveWeather(saved: Weather): { weather: Weather; live: boolea
     return () => controller.abort();
   }, [saved]);
   return { weather: live ?? saved, live: live !== null };
-}
-
-function Cards({ weather, caption }: { weather: Weather; caption: string }) {
-  return (
-    <>
-      <div className="weather-head muted">{caption}</div>
-      <div className="weather">
-        {weather.places.map((p) => (
-          <div className="card" key={`${p.name}@${p.latitude},${p.longitude}`}>
-            <div className="name">{p.name}</div>
-            <div className="row">
-              <span className="temp">{round(p.now.temperature)}°</span>
-              <SkyIcon code={p.now.code} />
-            </div>
-            <div className="sky">{sky(p.now.code).text}</div>
-            <div className="range">{range(p.today)}</div>
-            <div className="tomorrow">
-              <span>明天</span>
-              {p.tomorrow && <SkyIcon code={p.tomorrow.code} className="icon-sm" />}
-              <span className="t-range">{p.tomorrow ? range(p.tomorrow, "–") : "–"}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-const hhmm = (iso: string) => iso.slice(11, 16);
-
-/** The home page: the latest saved weather, replaced by the current one. */
-export function LiveWeather({ saved }: { saved: Weather }) {
-  const { weather, live } = useLiveWeather(saved);
-  return <Cards weather={weather} caption={live ? "现在的天气" : `${saved.date} ${hhmm(saved.fetched_at)} 的天气`} />;
-}
-
-/** A day's page: that day's weather as it was saved. */
-export function SavedWeather({ weather }: { weather: Weather }) {
-  return <Cards weather={weather} caption={`当天 ${hhmm(weather.fetched_at)} 的天气`} />;
 }
 
 /** The small strip in a day's row. */

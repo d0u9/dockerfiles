@@ -85,6 +85,7 @@ ai-digest/
       main.ts          subcommand dispatch
       pull.ts          fetch articles from FreshRSS
       digest.ts        call codex; fetch the weather
+      markets.ts       fetch the exchange rates and quotes
       archive.ts       write to the data repository and push
       indexer.ts       generate the website's data from the data repository
       publish-web.ts   copy the page files into the web root
@@ -113,6 +114,7 @@ ai-digest-data/
   prompts/<sha256>.md          every distinct prompt ever sent, once each
   2026/09/27/
     weather.json               the day's weather, shared by everyone
+    markets.json               the day's exchange rates and quotes, likewise
     alice.json                 alice's digest for the day
     alice.pulled.jsonl         every article pulled for alice that day (metadata)
     bob.json
@@ -203,6 +205,35 @@ ai-digest-data/
   the website's choice, so changing them never touches the data.
 - When the fetch fails, the file is not written: that day has no weather and
   everything else proceeds.
+
+`markets.json` is kept the same way, one per day, fetched by the first run:
+
+```json
+{
+  "version": 1,
+  "date": "2026-09-27",
+  "fetched_at": "2026-09-27T07:30:05+02:00",
+  "rates": [
+    {"base": "EUR", "quote": "USD", "as_of": "2026-09-25", "value": 1.1403,
+     "history": [{"date": "2026-08-25", "value": 1.1321}, "…"]}
+  ],
+  "quotes": [
+    {"name": "Example Index", "symbol": "^XYZ", "currency": "USD",
+     "as_of": "2026-09-26T20:00:00.000Z", "value": 7743.41, "previous_close": 7704.13,
+     "history": ["…"]}
+  ]
+}
+```
+
+- Rates come from Frankfurter (the European Central Bank's reference rates,
+  published on working days), quotes from Yahoo Finance's chart endpoint;
+  neither needs a key. `history` is about a month of daily values, for a trend
+  line.
+- An item that cannot be had is left out; with none at all, the file is not
+  written.
+- The website replaces the saved rates with current ones from Frankfurter,
+  which a browser may ask directly. Yahoo Finance does not allow that, so
+  quotes are shown as saved, with the time they are from.
 
 ### 5.4 Every pulled article: `<user>.pulled.jsonl`
 
@@ -300,6 +331,10 @@ The deployment renders one directory and bind-mounts it read-only at
   ],
   "clocks": [{"name": "Here", "timezone": "Europe/Berlin"}, {"name": "East", "timezone": "Asia/Tokyo"}],
   "holidays": [{"name": "Example", "country": "AU", "region": "AU-NSW"}],
+  "markets": {
+    "rates": [{"base": "EUR", "quote": "USD"}],
+    "quotes": [{"name": "Example Index", "symbol": "^XYZ"}]
+  },
   "data": {"remote": "git@github.com:<owner>/ai-digest-data.git", "branch": "main"}
 }
 ```
@@ -313,6 +348,8 @@ The deployment renders one directory and bind-mounts it read-only at
 - `holidays`: whose public holidays the calendar card lists, by ISO 3166
   country code, optionally with a subdivision (`AU-NSW`) for its regional
   ones. The browser fetches them from Nager.Date.
+- `markets`: exchange rates by ISO 4217 code and quotes by Yahoo Finance
+  symbol, shown with their value, the day's change and a month's trend (5.3).
 - The first place in `weather` is "here": the dashboard shows its next 24
   hours, sunrise and sunset, UV and air quality, fetched by the browser from
   Open-Meteo; the other places get one row each.
@@ -430,7 +467,8 @@ one can be inspected when something goes wrong.
 ```
 for each person:
   pull    → spool/U.articles.jsonl, spool/U.window.json
-  digest  → spool/U.json, spool/U.pulled.jsonl, spool/prompts/<sha256>.md, spool/weather.json
+  digest  → spool/U.json, spool/U.pulled.jsonl, spool/prompts/<sha256>.md, spool/weather.json,
+            spool/markets.json
             (no articles, or none selected: no U.json, this person stops here today)
 then once:
   archive → move the spool files into today's directory, one commit, push
@@ -479,7 +517,7 @@ each digest, so gaps can be checked.
 <web root>/
   index.html, assets/…       pages, placed by publish-web
   data/
-    index.json               people, months, latest day, latest weather
+    index.json               people, months, latest day, latest weather and markets
     months/2026-09.json      each day of the month: weather, per-person counts and summaries
     days/2026/09/27/alice.json   copied from the data repository
 ```
@@ -492,7 +530,9 @@ each digest, so gaps can be checked.
   "generated_at": "…",
   "users": ["alice", "bob"],
   "months": [{"month": "2026-09", "days": 27, "users": ["alice", "bob"]}],
-  "latest": {"date": "2026-09-27", "weather": {"…": "that day's weather.json"}},
+  "latest": {"date": "2026-09-27", "weather": {"…": "that day's weather.json"},
+             "markets": {"…": "the latest markets.json"}},
+  "markets": {"rates": ["…"], "quotes": ["…"]},
   "links": [{"title": "Rates", "items": [{"name": "…", "url": "…"}]}],
   "clocks": [{"name": "…", "timezone": "…"}],
   "holidays": [{"name": "…", "country": "AU", "region": "AU-NSW"}]
@@ -537,12 +577,13 @@ rewrite rules:
 
 | Route | Shows |
 |---|---|
-| `#/` | Home, two pages that switch rather than scroll. **Dashboard**: exactly one screen high, for the latest day. A tab per person, remembered in the browser, chooses whose news card is shown: a way in -- how many articles and under which sections -- linking to the digest, followed by the day's highlights linking to their articles. The other cards are shared, in three columns: the link groups in one card under the news, as chips; one weather card (here in detail, the other places one row each); analogue clocks and a calendar (lunar date, the next solar term, upcoming public holidays). A card with nothing to show is left out. **History**: a timeline of earlier days, newest first, with sticky month headers; each node is a day with its weather strip and one card per person, loading one month file at a time as its end comes into view. On a wide screen one turn of the wheel, a swipe or a key moves between the two pages, with a pager on the right edge; on a narrow screen the cards stack in the order clocks, calendar, weather, news, links, and the page simply scrolls |
+| `#/` | Home, two pages that switch rather than scroll. **Dashboard**: one screen high on a desktop, for the latest day, in three columns weighted by what is read. The widest holds the news, the only card that is a person's, chosen by a tab remembered in the browser: the day's summary to read first, the articles most worth opening (title, source, why), and the sections as chips that open the digest at that section; what does not fit scrolls inside the card and fades at its edge. The second holds one weather card (here in detail, the other places one row each) and the calendar (lunar date, the next solar term, upcoming public holidays); the third the analogue clocks, the markets (each rate and quote with its value, the day's change, red up and green down, and a month's trend line) and any link groups. Every card opens with the same small label. A card with nothing to show is left out. **History**: a timeline of earlier days, newest first, with sticky month headers; each node is a day with its weather strip and one card per person, loading one month file at a time as its end comes into view. On a large screen one turn of the wheel, a swipe or a key moves between the two pages, with a pager on the right edge. Below 1100 pixels wide or 680 high the dashboard becomes two columns and the page simply scrolls; on a phone the cards are one list in the order clocks, calendar, weather, news, markets, links |
 | `#/2026-09` | Month: one row per day, as on the home page; previous and next month |
 | `#/archive` | Archive: months by year, with day and article counts |
 | `#/alice` | alice's months |
 | `#/alice/2026-09` | alice's days in that month |
-| `#/alice/2026-09-27` | One digest: the day's weather, summary, highlights, sections |
+| `#/alice/2026-09-27` | One digest, laid out for reading in one column: the date, a switch to the same day of another person, the day's weather in one line; the summary; a bar of the sections, which stays at the top while scrolling and marks the one being read; the articles worth opening; then each section, every article as its title, source and time, and the note. The previous and next day of that person are linked at the end |
+| `#/alice/2026-09-27/2` | The same, opened at its second section |
 
 - The home page no longer stops at 30 days: the timeline reaches back as far
   as the data does, but loads a month only when the reader gets there.

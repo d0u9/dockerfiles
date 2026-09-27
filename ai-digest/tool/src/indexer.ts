@@ -1,6 +1,6 @@
 // index: generate the website's data from the data repository (DESIGN 9.1).
 //
-//     <web>/data/index.json                    people, months, the latest weather, links, clocks, holidays
+//     <web>/data/index.json                    people, months, the latest weather and markets, links, clocks, holidays
 //     <web>/data/months/YYYY-MM.json           each day of the month
 //     <web>/data/days/YYYY/MM/DD/<user>.json   the digests, copied
 //
@@ -8,14 +8,14 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import type { Digest, Month, SiteIndex, Weather } from "../../shared/types.ts";
+import type { Digest, Markets, Month, SiteIndex, Weather } from "../../shared/types.ts";
 import { type Config, dayDir, days, dirs, log, now, ordered, readJson, writeJson } from "./common.ts";
 
 function dayEntry(config: Config, date: string): Month["days"][number] {
   const directory = dayDir(dirs.data, date);
   const weather = readJson<Weather>(path.join(directory, "weather.json"));
   const names = fs.readdirSync(directory)
-    .filter((n) => n.endsWith(".json") && n !== "weather.json")
+    .filter((n) => n.endsWith(".json") && n !== "weather.json" && n !== "markets.json")
     .map((n) => n.slice(0, -".json".length));
   const digests: Month["days"][number]["digests"] = {};
   for (const user of ordered(config, names)) {
@@ -86,12 +86,18 @@ export function run(config: Config, rebuildAll = false): void {
     weather = readJson<Weather>(path.join(dayDir(dirs.data, date), "weather.json"));
     if (weather) break;
   }
+  let markets: Markets | null = null;
+  for (const date of [...allDays].reverse()) {
+    markets = readJson<Markets>(path.join(dayDir(dirs.data, date), "markets.json"));
+    if (markets) break;
+  }
   const index: SiteIndex = {
     version: 1,
     generated_at: now(config).iso,
     users: ordered(config, [...Object.keys(config.users), ...summaries.flatMap((s) => s.users)]),
     months: summaries,
-    latest: { date: allDays.at(-1) ?? null, weather },
+    latest: { date: allDays.at(-1) ?? null, weather, markets },
+    markets: config.markets,
     links: config.links,
     clocks: config.clocks,
     holidays: config.holidays,
