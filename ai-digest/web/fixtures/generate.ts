@@ -24,7 +24,17 @@ const PLACES = [
   { name: "Springfield", latitude: 48.1, longitude: 11.6 },
   { name: "Shelbyville", latitude: 47.4, longitude: 8.5 },
   { name: "Ogdenville", latitude: 52.5, longitude: 13.4 },
+  { name: "North Haverbrook", latitude: 41.4, longitude: 2.2 },
+  { name: "Capital City", latitude: 45.5, longitude: 9.2 },
+  { name: "Brockway", latitude: 50.1, longitude: 14.4 },
+  { name: "Cypress Creek", latitude: 38.7, longitude: -9.1 },
 ];
+// Enough of everything that the cards overflow, as a real set-up does.
+const QUOTES: [string, string, number][] = [
+    ["Example 100", "EX100", 7800], ["Sample Composite", "SMPC", 3900], ["Test Index", "TST", 24500],
+    ["Demo Tech", "DMT", 180], ["Placeholder Retail", "PHR", 210], ["Mock Motors", "MKM", 95],
+    ["Fictional Foods", "FFD", 64], ["Dummy Devices", "DDV", 330],
+  ];
 const CODES = [0, 1, 2, 3, 45, 51, 61, 63, 71, 80, 95];
 
 let seed = 42;
@@ -90,8 +100,8 @@ for (let i = DAYS - 1; i >= 0; i--) {
   };
   const markets: Markets = {
     version: 1, date, fetched_at: iso,
-    rates: [rate("EUR", "USD", 1.1), rate("EUR", "GBP", 0.85), rate("USD", "JPY", 150)],
-    quotes: [quote("Example 100", "EX100", 7800), quote("Sample Composite", "SMPC", 3900), quote("Test Index", "TST", 24500)],
+    rates: [rate("EUR", "USD", 1.1), rate("EUR", "GBP", 0.85), rate("USD", "JPY", 150), rate("USD", "CHF", 0.8)],
+    quotes: QUOTES.map(([name, symbol, start]) => quote(name, symbol, start)),
   };
   writeJson(path.join(dayDir(data, date), "markets.json"), markets);
   for (const [user, start] of Object.entries(USERS)) {
@@ -103,7 +113,7 @@ for (let i = DAYS - 1; i >= 0; i--) {
       items: ids.filter(() => random() < 0.3).map((a) => ({ article: a, note: pick(NOTES) })),
     })).filter((s) => s.items.length);
     const used = new Set(sections.flatMap((s) => s.items.map((i) => i.article)));
-    const highlights = [...used].slice(0, 3).map((a) => ({ article: a, why: pick(WHYS) }));
+    const highlights = [...used].slice(0, 5).map((a) => ({ article: a, why: pick(WHYS) }));
     const digest: Digest = {
       version: 1, user, date, generated_at: iso,
       run: { tool: "dev", model: "example-model", reasoning_effort: "low" },
@@ -137,8 +147,8 @@ const config: Config = {
   // Real currency codes, so the browser's live rates can be tried; made-up
   // symbols, which only the saved snapshot has.
   markets: {
-    rates: [{ base: "EUR", quote: "USD" }, { base: "EUR", quote: "GBP" }, { base: "USD", quote: "JPY" }],
-    quotes: [{ name: "Example 100", symbol: "EX100" }, { name: "Sample Composite", symbol: "SMPC" }, { name: "Test Index", symbol: "TST" }],
+    rates: [{ base: "EUR", quote: "USD" }, { base: "EUR", quote: "GBP" }, { base: "USD", quote: "JPY" }, { base: "USD", quote: "CHF" }],
+    quotes: QUOTES.map(([name, symbol]) => ({ name, symbol })),
   },
   data: { branch: "main" },
 };

@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Digest, LinkGroup, Month, SiteIndex } from "../../shared/types.ts";
 import { loadDigest, loadIndex, loadMonth, safeUrl, useLoad, weekday } from "./data.ts";
 import { Timeline } from "./timeline.tsx";
-import { Link, Show } from "./ui.tsx";
+import { Link, Scroller, Show } from "./ui.tsx";
 import { MarketsCard } from "./markets.tsx";
 import { CalendarCard, Clocks, WeatherCard } from "./today.tsx";
 
@@ -57,7 +57,7 @@ function NewsCard({ user, date, digest }: { user: string; date: string; digest: 
         <h2>新闻</h2>
         <Link className="card-action" to={`${user}/${date}`}>读完整日报 →</Link>
       </div>
-      <div className="news-scroll">
+      <Scroller className="news-scroll">
         <p className="news-stats">
           精选 <strong>{stats.selected}</strong> 篇{stats.pulled !== undefined && <> · 共读 {stats.pulled} 篇</>}
           {" · "}{digest.sections.length} 个分组
@@ -94,7 +94,7 @@ function NewsCard({ user, date, digest }: { user: string; date: string; digest: 
             ))}
           </div>
         </section>
-      </div>
+      </Scroller>
     </>
   );
 }
@@ -182,7 +182,9 @@ function Dashboard({ today, onHistory }: { today: Today; onHistory: () => void }
         {columns.map((column) => (
           <div className="dash-col" key={column[0]!.key}>
             {column.map((c) => (
-              <div className={`card dash-card dash-${c.key}`} key={c.key}>{c.render(user)}</div>
+              <div className={`card dash-card dash-${c.key}`} key={c.key}>
+                {c.key === "news" ? c.render(user) : <Scroller>{c.render(user)}</Scroller>}
+              </div>
             ))}
           </div>
         ))}
@@ -241,7 +243,8 @@ const SWITCH_MS = 750;
  * wheel, one swipe or one key moves the whole dashboard away and brings the
  * history up, and back again from the top of the history. Inside the history
  * the page scrolls normally. Where the dashboard is taller than the screen
- * (SCROLLING), nothing is intercepted.
+ * (SCROLLING), nothing is intercepted, and neither is a wheel or swipe over
+ * a card that scrolls its own content.
  */
 function usePageSwitch(ready: boolean): [Page, (to: Page) => void] {
   const [page, setPage] = useState<Page>("today");
@@ -271,8 +274,16 @@ function usePageSwitch(ready: boolean): [Page, (to: Page) => void] {
       if (direction < 0 && scrollY <= top + 2 && scrollY > 0) return "today";
       return null;
     };
+    /** A card with more than fits scrolls itself: a wheel or swipe over it,
+     *  even at its end, never switches pages, or a reader running through a
+     *  card would land in the history. */
+    const inScroller = (e: Event) => {
+      const box = (e.target as Element | null)?.closest?.(".scroller-body");
+      return !!box && box.scrollHeight > box.clientHeight + 1;
+    };
     const handle = (e: Event, direction: 1 | -1) => {
       if (narrow.matches) return;
+      if (e.type !== "keydown" && inScroller(e)) return;
       if (locked.current) { e.preventDefault(); return; }
       const to = switchFor(direction);
       if (to) { e.preventDefault(); go(to); }
