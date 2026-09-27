@@ -60,6 +60,19 @@ function Face({ hour, minute }: { hour: number; minute: number }) {
   );
 }
 
+/** The same time as digits on a square face, dark at night like the dial. */
+function Digits({ hour, minute }: { hour: number; minute: number }) {
+  const night = hour < 6 || hour >= 18;
+  const text = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return (
+    <svg className={`clock-face clock-square${night ? " night" : ""}`} viewBox="0 0 100 100" role="img" aria-label={text}>
+      <rect x="1" y="1" width="98" height="98" rx="22" className="clock-dial" />
+      <text x="50" y="52" className="clock-digits">{text}</text>
+      <text x="50" y="74" className="clock-ampm">{hour < 12 ? "上午" : "下午"}</text>
+    </svg>
+  );
+}
+
 /** Offset of a time zone from this browser's, as "+3 小时", "明天 +3 小时" or "本地". */
 function relative(at: Date, timeZone: string): string {
   const here = wall(at, Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -72,17 +85,32 @@ function relative(at: Date, timeZone: string): string {
   return `${day}${h > 0 ? "+" : "−"}${Math.abs(h)} 小时`;
 }
 
+/** Hands or digits, remembered in this browser only. */
+const CLOCK_STYLE = "ai-digest.clock-style";
+
 export function Clocks({ clocks }: { clocks: Clock[] }) {
   const now = useMinute();
+  const [digital, setDigital] = useState(() => {
+    try { return localStorage.getItem(CLOCK_STYLE) === "digital"; } catch { return false; }
+  });
+  const toggle = () => {
+    setDigital(!digital);
+    try { localStorage.setItem(CLOCK_STYLE, digital ? "analog" : "digital"); } catch { /* storage blocked */ }
+  };
   return (
     <>
-      <div className="card-head"><h2>时钟</h2></div>
+      <div className="card-head">
+        <h2>时钟</h2>
+        <button type="button" className="seg" onClick={toggle} aria-label={digital ? "改用指针" : "改用数字"}>
+          <span aria-current={!digital || undefined}>指针</span><span aria-current={digital || undefined}>数字</span>
+        </button>
+      </div>
       <div className="clocks">
         {clocks.map((c) => {
           const w = wall(now, c.timezone);
           return (
             <figure className="clock" key={`${c.name}@${c.timezone}`}>
-              <Face hour={w.hour} minute={w.minute} />
+              {digital ? <Digits hour={w.hour} minute={w.minute} /> : <Face hour={w.hour} minute={w.minute} />}
               <figcaption>
                 <strong>{c.name}</strong>
                 <span className="muted">{relative(now, c.timezone)}</span>
@@ -101,11 +129,16 @@ const LUNAR_DAYS = ["初一", "初二", "初三", "初四", "初五", "初六", 
   "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
   "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"];
 
-function lunar(at: Date): string {
-  const parts = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", { year: "numeric", month: "long", day: "numeric" }).formatToParts(at);
+const LUNAR = new Intl.DateTimeFormat("zh-CN-u-ca-chinese", { year: "numeric", month: "long", day: "numeric" });
+
+/** The Chinese calendar's year name, month and day for a date. */
+function lunarParts(at: Date): { year: string; month: string; day: string; first: boolean } {
+  const parts = LUNAR.formatToParts(at);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return `${get("yearName")}年 ${get("month")}${LUNAR_DAYS[Number(get("day")) - 1] ?? get("day")}`;
+  const n = Number(get("day"));
+  return { year: `${get("yearName")}年`, month: get("month"), day: LUNAR_DAYS[n - 1] ?? get("day"), first: n === 1 };
 }
+
 
 // The 24 solar terms from 小寒, two a month. Their day in the 21st century is
 // floor(Y × 0.2422 + C) − floor(L), Y the last two digits of the year and L
@@ -131,21 +164,50 @@ const daysUntil = (from: string, to: string) => Math.round((Date.parse(to) - Dat
 const md = (date: string) => `${Number(date.slice(5, 7))}月${Number(date.slice(8))}日`;
 const inDays = (n: number) => (n === 0 ? "今天" : n === 1 ? "明天" : `${n} 天后`);
 
-interface Holiday { date: string; name: string; region: string }
+interface Holiday { date: string; name: string; region: string; until?: string; work?: boolean }
 
-/** Public holidays from Nager.Date for this year and the next. */
+type NagerList = { date: string; localName: string; global: boolean; counties: string[] | null }[];
+type HolidayCn = { days: { name: string; date: string; isOffDay: boolean }[] };
+
+/**
+ * China's arrangement from the State Council's yearly notice, as collected by
+ * holiday-cn: each holiday as the whole run of days off, and the weekends
+ * worked in exchange (调休). Null when the year is not published yet.
+ */
+function chinaYear(body: HolidayCn, region: string): Holiday[] {
+  const out: Holiday[] = [];
+  for (const d of [...body.days].sort((a, b) => a.date.localeCompare(b.date))) {
+    const last = out.at(-1);
+    if (d.isOffDay && last && !last.work && last.name === d.name && daysUntil(last.until ?? last.date, d.date) === 1) {
+      last.until = d.date;
+    } else if (d.isOffDay) {
+      out.push({ date: d.date, name: d.name, region });
+    } else {
+      out.push({ date: d.date, name: `${d.name}调休`, region, work: true });
+    }
+  }
+  return out;
+}
+
+/** Public holidays for the years either side of this one: China's from holiday-cn, with
+ *  its make-up working days, everyone else's from Nager.Date. */
 function useHolidays(regions: HolidayRegion[], year: number): Holiday[] | null {
   const [found, setFound] = useState<Holiday[] | null>(null);
   useEffect(() => {
     if (!regions.length) return;
     const controller = new AbortController();
-    const one = (r: HolidayRegion, y: number) =>
-      fetch(`https://date.nager.at/api/v3/PublicHolidays/${y}/${r.country}`, { signal: controller.signal })
-        .then((res) => (res.ok ? res.json() : []))
-        .then((list: { date: string; localName: string; global: boolean; counties: string[] | null }[]) =>
-          list.filter((h) => h.global || (r.region && h.counties?.includes(r.region)))
-            .map((h) => ({ date: h.date, name: h.localName, region: r.name })));
-    Promise.all(regions.flatMap((r) => [one(r, year), one(r, year + 1)]))
+    const get = <T,>(url: string) => fetch(url, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() as Promise<T> : Promise.reject(new Error(String(res.status)))));
+    const nager = (r: HolidayRegion, y: number) =>
+      get<NagerList>(`https://date.nager.at/api/v3/PublicHolidays/${y}/${r.country}`)
+        .then((list) => list.filter((h) => h.global || (r.region && h.counties?.includes(r.region)))
+          .map((h) => ({ date: h.date, name: h.localName, region: r.name })))
+        .catch(() => [] as Holiday[]);
+    const one = (r: HolidayRegion, y: number) => r.country === "CN"
+      ? get<HolidayCn>(`https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${y}.json`)
+        .then((body) => chinaYear(body, r.name), () => nager(r, y))
+      : nager(r, y);
+    Promise.all(regions.flatMap((r) => [one(r, year - 1), one(r, year), one(r, year + 1)]))
       .then((lists) => setFound(lists.flat().sort((a, b) => a.date.localeCompare(b.date))))
       .catch(() => {});
     return () => controller.abort();
@@ -153,30 +215,123 @@ function useHolidays(regions: HolidayRegion[], year: number): Holiday[] | null {
   return found;
 }
 
+const WEEK = ["一", "二", "三", "四", "五", "六", "日"];
+const localDate = (date: string) => new Date(`${date}T12:00:00`);
+
+/** The holidays on each day: a run of days off counts on every day of it. */
+function byDay(holidays: Holiday[]): Map<string, Holiday[]> {
+  const out = new Map<string, Holiday[]>();
+  for (const h of holidays) {
+    for (let d = h.date; d <= (h.until ?? h.date); d = iso(new Date(localDate(d).getTime() + 86_400_000))) {
+      out.set(d, [...(out.get(d) ?? []), h]);
+    }
+  }
+  return out;
+}
+
+/** A month as Apple's calendar lays it out: six weeks from Monday, each day
+ *  with its lunar day, or the solar term or holiday that falls on it. */
+function MonthGrid({ month, today, selected, onSelect, days, termOn }: {
+  month: string; today: string; selected: string; onSelect: (date: string) => void;
+  days: Map<string, Holiday[]>; termOn: Map<string, string>;
+}) {
+  const first = localDate(`${month}-01`);
+  const start = new Date(first.getTime() - ((first.getDay() + 6) % 7) * 86_400_000);
+  const cells = Array.from({ length: 42 }, (_, i) => iso(new Date(start.getTime() + i * 86_400_000)));
+  // Drop a last week that lies wholly in the next month.
+  const shown = cells.slice(35).every((d) => !d.startsWith(month)) ? cells.slice(0, 35) : cells;
+  return (
+    <div className="cal-grid" role="grid" aria-label={`${Number(month.slice(0, 4))}年${Number(month.slice(5))}月`}>
+      {WEEK.map((w, i) => <div key={w} className={`cal-wd${i > 4 ? " cal-weekend" : ""}`} role="columnheader">{w}</div>)}
+      {shown.map((d, i) => {
+        const l = lunarParts(localDate(d));
+        const hs = days.get(d) ?? [];
+        const off = hs.some((h) => !h.work), work = hs.some((h) => h.work);
+        // What the small line says, most telling first.
+        const festival = hs.find((h) => !h.work && h.date === d);
+        const label = festival?.name ?? termOn.get(d) ?? (l.first ? l.month : l.day);
+        const cls = ["cal-day",
+          d.startsWith(month) ? "" : "cal-out",
+          i % 7 > 4 ? "cal-weekend" : "",
+          d === today ? "is-today" : "",
+          d === selected ? "is-selected" : "",
+          festival || termOn.has(d) || l.first ? "cal-marked" : ""].filter(Boolean).join(" ");
+        return (
+          <button key={d} type="button" className={cls} role="gridcell" aria-selected={d === selected}
+            aria-label={`${md(d)} 农历${l.month}${l.day}${hs.map((h) => ` ${h.name}`).join("")}`} onClick={() => onSelect(d)}>
+            <span className="cal-num">{Number(d.slice(8))}</span>
+            <span className="cal-sub">{label}</span>
+            {(off || work) && <span className={`cal-badge${work ? " work" : ""}`}>{work ? "班" : "休"}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CalendarCard({ regions }: { regions: HolidayRegion[] }) {
   const now = useMinute();
   const today = iso(now);
   const year = now.getFullYear();
   const holidays = useHolidays(regions, year);
-  const term = [...terms(year), ...terms(year + 1)].find((t) => t.date >= today)!;
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [selected, setSelected] = useState(today);
+  const allTerms = [year - 1, year, year + 1].flatMap(terms);
+  const termOn = new Map(allTerms.map((t) => [t.date, t.name]));
+  const term = allTerms.find((t) => t.date >= today)!;
+  const days = byDay(holidays ?? []);
+  const move = (by: number) => {
+    const d = localDate(`${month}-01`);
+    d.setMonth(d.getMonth() + by);
+    setMonth(iso(d).slice(0, 7));
+  };
+  const pick = (date: string) => { setSelected(date); if (!date.startsWith(month)) setMonth(date.slice(0, 7)); };
+  const sel = lunarParts(localDate(selected));
+  const selHolidays = days.get(selected) ?? [];
   // The next few, each region's first ones rather than one region's many.
-  const upcoming = (holidays ?? []).filter((h) => h.date >= today)
+  const upcoming = (holidays ?? []).filter((h) => (h.until ?? h.date) >= today)
     .filter((h, i, all) => all.slice(0, i).filter((o) => o.region === h.region).length < 2)
     .slice(0, 4);
   return (
     <>
       <div className="card-head"><h2>日历</h2></div>
-      <div className="cal-lunar">农历 {lunar(now)}</div>
-      <div className="muted">
-        {term.date === today ? <>今天<strong className="cal-term">{term.name}</strong></> : <>{term.name} · {md(term.date)}（{inDays(daysUntil(today, term.date))}）</>}
+      <div className="cal-month-head">
+        <strong>{Number(month.slice(0, 4))}年{Number(month.slice(5))}月</strong>
+        <span className="cal-nav">
+          <button type="button" onClick={() => move(-1)} aria-label="上个月">‹</button>
+          <button type="button" onClick={() => { setMonth(today.slice(0, 7)); setSelected(today); }}
+            disabled={month === today.slice(0, 7) && selected === today}>今天</button>
+          <button type="button" onClick={() => move(1)} aria-label="下个月">›</button>
+        </span>
+      </div>
+      <MonthGrid month={month} today={today} selected={selected} onSelect={pick} days={days} termOn={termOn} />
+      <div className="cal-detail" aria-live="polite">
+        <div>
+          <strong>{md(selected)} 周{WEEK[(localDate(selected).getDay() + 6) % 7]}</strong>
+          <span className="muted"> {selected === today ? "今天" : selected > today ? inDays(daysUntil(today, selected)) : `${daysUntil(selected, today)} 天前`}</span>
+        </div>
+        <div className="muted">
+          农历 {sel.year} {sel.month}{sel.day}
+          {termOn.has(selected) ? <> · <span className="cal-term">{termOn.get(selected)}</span></>
+            : selected === today && <> · 下一个节气 {term.name} {md(term.date)}（{inDays(daysUntil(today, term.date))}）</>}
+        </div>
+        {selHolidays.map((h) => (
+          <div key={`${h.region}${h.name}`}>
+            <span className="muted">{h.region}</span> {h.name}
+            <span className={`cal-badge inline${h.work ? " work" : ""}`}>{h.work ? "上班" : "放假"}</span>
+          </div>
+        ))}
       </div>
       {regions.length > 0 && (
         <ul className="link-list cal-holidays">
           {holidays === null && <li className="muted">假期加载中…</li>}
           {upcoming.map((h) => (
-            <li key={`${h.region}${h.date}${h.name}`} className={h.date === today ? "cal-today" : undefined}>
-              <span className="muted">{h.region}</span> {h.name}
-              <span className="muted cal-when">{md(h.date)} · {inDays(daysUntil(today, h.date))}</span>
+            <li key={`${h.region}${h.date}${h.name}`} className={h.date <= today ? "cal-today" : undefined}>
+              <span className="muted">{h.region}</span> {h.name}{h.work && <span className="cal-work">班</span>}
+              <span className="muted cal-when">
+                {md(h.date)}{h.until && `–${h.until.slice(5, 7) === h.date.slice(5, 7) ? `${Number(h.until.slice(8))}日` : md(h.until)}`}
+                {" · "}{h.date <= today ? "今天" : inDays(daysUntil(today, h.date))}
+              </span>
             </li>
           ))}
         </ul>

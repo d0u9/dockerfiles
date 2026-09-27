@@ -7,7 +7,7 @@
 //    with the latest month and loads the one before whenever its end comes
 //    into view, one month file at a time.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Digest, LinkGroup, Month, SiteIndex } from "../../shared/types.ts";
 import { loadDigest, loadIndex, loadMonth, safeUrl, useLoad, weekday } from "./data.ts";
 import { Timeline } from "./timeline.tsx";
@@ -126,16 +126,27 @@ interface Card { key: string; render: (user: string) => ReactNode }
 
 /**
  * The cards on the dashboard, in three columns read left to right by weight:
- * the chosen person's news, the only card that is a person's, gets the widest
- * column; then the weather and the calendar; then the clocks, the markets
- * and the links. A card with nothing to show is left out; an empty column
- * too. On a phone the cards become one list, in the order the stylesheet
- * gives them. Add new kinds of content here.
+ * the chosen person's news gets the widest column; then the weather and the
+ * calendar; then the clocks, the markets and the links. All but the news come
+ * from the person's own dashboard where the configuration gives one. A card
+ * with nothing to show is left out; an empty column too. On a phone the cards
+ * become one list, in the order the stylesheet gives them. Add new kinds of
+ * content here.
  */
-function columnsFor(t: Today): Card[][] {
-  const { weather, markets: savedMarkets } = t.index.latest;
-  const { clocks, holidays, links, markets } = t.index;
-  const hasMarkets = markets.rates.length > 0 || markets.quotes.length > 0 || savedMarkets !== null;
+function columnsFor(t: Today, user: string): Card[][] {
+  const { weather: savedWeather, markets: savedMarkets } = t.index.latest;
+  // The person's own dashboard; an index from before there were any has
+  // only the shared one.
+  const { clocks, holidays, links, markets, weather: places } = t.index.dashboards?.[user]
+    ?? { ...t.index, weather: savedWeather?.places ?? [] };
+  // The day's weather was fetched for everyone's places: keep this person's,
+  // in their order.
+  const weather = savedWeather && {
+    ...savedWeather,
+    places: places.flatMap((p) => savedWeather.places.filter((s) =>
+      s.name === p.name && s.latitude === p.latitude && s.longitude === p.longitude)),
+  };
+  const hasMarkets = markets.rates.length > 0 || markets.quotes.length > 0;
   return [
     [{ key: "news", render: (user: string) => <NewsCard user={user} date={t.date} digest={t.digests[user]} /> }],
     [
@@ -152,18 +163,51 @@ function columnsFor(t: Today): Card[][] {
   ].filter((c) => c.length);
 }
 
-function Dashboard({ today, onHistory }: { today: Today; onHistory: () => void }) {
+/**
+ * Whose news the dashboard shows: the one the address names (#/home/alice),
+ * else the one last chosen in this browser, else the first. Choosing another
+ * rewrites the address in place, so a bookmark keeps that person without
+ * relying on the browser's storage.
+ */
+/**
+ * The dashboard is laid out for a screen FIT pixels high: the calendar's
+ * whole month and the chosen day beneath it, beside the weather. A shorter
+ * screen scales the whole dashboard down to fit rather than cutting them, to
+ * no less than MIN_ZOOM; below that the page scrolls instead (SCROLLING).
+ */
+const FIT = 960;
+const MIN_ZOOM = 0.72;
+
+function useFit(): number {
+  const fit = () => (matchMedia(SCROLLING).matches ? 1 : Math.max(MIN_ZOOM, Math.min(1, innerHeight / FIT)));
+  const [zoom, setZoom] = useState(fit);
+  useEffect(() => {
+    const update = () => setZoom(fit());
+    addEventListener("resize", update);
+    return () => removeEventListener("resize", update);
+  }, []);
+  return zoom;
+}
+
+function Dashboard({ today, chosen, onHistory }: { today: Today; chosen?: string; onHistory: () => void }) {
   const users = today.index.users;
   const [user, setUser] = useState(() => {
+    if (chosen && users.includes(chosen)) return chosen;
     const r = remembered();
     return r && users.includes(r) ? r : users[0]!;
   });
+  const choose = (u: string) => {
+    setUser(u);
+    remember(u);
+    history.replaceState(null, "", `#/home/${encodeURIComponent(u)}`);
+  };
   const local = new Date();
   const isToday = today.date === [local.getFullYear(), local.getMonth() + 1, local.getDate()]
     .map((n, i) => String(n).padStart(i ? 2 : 4, "0")).join("-");
-  const columns = columnsFor(today);
+  const columns = columnsFor(today, user);
+  const zoom = useFit();
   return (
-    <section className="dashboard">
+    <section className="dashboard" style={{ "--z": zoom } as CSSProperties}>
       <header className="dash-head">
         <div>
           <h1>{Number(today.date.slice(5, 7))}月{Number(today.date.slice(8))}日 {weekday(today.date)}</h1>
@@ -173,16 +217,16 @@ function Dashboard({ today, onHistory }: { today: Today; onHistory: () => void }
           <div className="tabs" role="tablist" aria-label="读谁的日报">
             {users.map((u) => (
               <button key={u} role="tab" aria-selected={u === user}
-                onClick={() => { setUser(u); remember(u); }}>{u}</button>
+                onClick={() => choose(u)}>{u}</button>
             ))}
           </div>
         )}
       </header>
       <div className="dash-grid">
         {columns.map((column) => (
-          <div className="dash-col" key={column[0]!.key}>
+          <div className="dash-col" key={column.map((c) => c.key).join()}>
             {column.map((c) => (
-              <div className={`card dash-card dash-${c.key}`} key={c.key}>
+              <div className={`card dash-card dash-${c.key}`} key={`${user}-${c.key}`}>
                 {c.key === "news" ? c.render(user) : <Scroller>{c.render(user)}</Scroller>}
               </div>
             ))}
@@ -333,14 +377,14 @@ function Pager({ page, go }: { page: Page; go: (to: Page) => void }) {
   );
 }
 
-export function Home() {
+export function Home({ user }: { user?: string }) {
   const loaded = useLoad("today", loadToday);
   const [page, go] = usePageSwitch(loaded.state === "done" && loaded.value !== null);
   return (
     <Show loaded={loaded}>
       {(today) => today ? (
         <div className={`pages on-${page}`}>
-          <Dashboard today={today} onHistory={() => go("history")} />
+          <Dashboard today={today} chosen={user} onHistory={() => go("history")} />
           <History index={today.index} skip={today.date} />
           <Pager page={page} go={go} />
         </div>

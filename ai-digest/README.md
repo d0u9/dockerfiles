@@ -60,7 +60,7 @@ key is an error:
   "pull": {"since": "24h", "max_window": "7d", "max_chars": 4000, "unread_only": true},
   "users": {
     "alice": {"sections": ["World", "Tech"], "skip_feeds": ["example.net"]},
-    "bob": {}
+    "bob": {"clocks": [{"name": "Here", "timezone": "Europe/Berlin"}]}
   },
   "weather": [{"name": "Springfield", "latitude": 48.1, "longitude": 11.6}],
   "links": [
@@ -78,10 +78,15 @@ key is an error:
 
 - `weather`: the first place is "here", shown in detail on the dashboard.
 - `links`: groups of `http`/`https` links shown on the dashboard.
-- `clocks`: analogue clocks, one IANA time zone each.
+- `clocks`: clocks, one IANA time zone each, shown with hands or digits.
 - `holidays`: ISO 3166 country codes, optionally with a subdivision.
 - `markets`: exchange rates by ISO 4217 code, quotes by Yahoo Finance
   symbol. `digest` saves them each day with a month's history.
+- A person may have their own `weather`, `links`, `clocks`, `holidays` or
+  `markets` under their name in `users`, in the same form: their dashboard
+  shows those, and the shared ones for the rest. `digest` fetches the
+  weather and markets once for everyone's places, rates and quotes, again on
+  the same day when one is added.
 
 Environment variables override single settings: `AI_DIGEST_SINCE`,
 `AI_DIGEST_MODEL`, `AI_DIGEST_REASONING_EFFORT`, `AI_DIGEST_TIMEOUT`. The
@@ -89,8 +94,9 @@ mount paths can be moved with `AI_DIGEST_CONFIG`, `AI_DIGEST_SPOOL`,
 `AI_DIGEST_DATA`, `AI_DIGEST_WEB` and `AI_DIGEST_SECRETS`.
 
 The website's browser fetches the live weather and air quality from
-Open-Meteo, current exchange rates from Frankfurter and public holidays from
-Nager.Date. Quotes are shown as `digest` saved them: Yahoo Finance does not
+Open-Meteo, current exchange rates from Frankfurter, public holidays from
+Nager.Date, and China's holidays with its make-up working days from
+holiday-cn. Quotes are shown as `digest` saved them: Yahoo Finance does not
 let a browser on another site read them.
 
 ## Example

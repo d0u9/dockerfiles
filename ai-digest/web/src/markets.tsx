@@ -11,7 +11,7 @@
 // Colours follow the Chinese convention the page is written for: red is up,
 // green is down.
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Markets, MarketsConfig, Series } from "../../shared/types.ts";
 
 type Rate = Markets["rates"][number];
@@ -70,13 +70,13 @@ function format(value: number): string {
 /** Yahoo Finance's page for a symbol: the full chart, news and figures. */
 const detailUrl = (symbol: string) => `https://finance.yahoo.com/quote/${encodeURIComponent(symbol).replace("%3D", "=")}/`;
 
-function Row({ name, sub, symbol, value, previous, history }: {
-  name: string; sub?: string; symbol: string; value: number; previous: number | null; history: Series;
+function Row({ name, sub, symbol, value, previous, history, lead }: {
+  name: string; sub?: string; symbol: string; value: number; previous: number | null; history: Series; lead?: ReactNode;
 }) {
   const change = previous ? (value - previous) / previous : null;
   const trend = change === null || Math.abs(change) < 0.00005 ? "flat" : change > 0 ? "up" : "down";
   return (
-    <li><a className="mk-row" href={detailUrl(symbol)} target="_blank" rel="noopener noreferrer" title={`${name} 详情`}>
+    <li className="mk-item">{lead}<a className="mk-row" href={detailUrl(symbol)} target="_blank" rel="noopener noreferrer" title={`${name} 详情`}>
       <span className="mk-name">{name}{sub && <span className="muted"> {sub}</span>}</span>
       <Spark history={history} />
       <span className="mk-value">{format(value)}</span>
@@ -92,9 +92,35 @@ const md = (date: string) => `${Number(date.slice(5, 7))}月${Number(date.slice(
 /** The close before the last value, for the day's change. */
 const previous = (history: Series, asOf: string) => history.filter((h) => h.date < asOf.slice(0, 10)).at(-1)?.value ?? null;
 
+/** Rates the reader turned round, remembered in this browser only. */
+const FLIPPED = "ai-digest.flipped-rates";
+function useFlipped(): [Set<string>, (pair: string) => void] {
+  const [flipped, setFlipped] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(FLIPPED) ?? "[]") as string[]); } catch { return new Set(); }
+  });
+  const toggle = (pair: string) => setFlipped((old) => {
+    const next = new Set(old);
+    if (!next.delete(pair)) next.add(pair);
+    try { localStorage.setItem(FLIPPED, JSON.stringify([...next])); } catch { /* storage blocked */ }
+    return next;
+  });
+  return [flipped, toggle];
+}
+
+/** A rate the other way round: CNY/AUD from AUD/CNY. */
+function flip(r: Rate): Rate {
+  return {
+    base: r.quote, quote: r.base, as_of: r.as_of, value: 1 / r.value,
+    history: r.history.map((h) => ({ date: h.date, value: 1 / h.value })),
+  };
+}
+
 export function MarketsCard({ config, saved }: { config: MarketsConfig; saved: Markets | null }) {
-  const { rates, live } = useLiveRates(config.rates, saved?.rates ?? []);
-  const quotes = saved?.quotes ?? [];
+  // The day's snapshot has everyone's; keep what this dashboard lists, in its order.
+  const savedRates = config.rates.flatMap((c) => saved?.rates.filter((r) => r.base === c.base && r.quote === c.quote) ?? []);
+  const { rates, live } = useLiveRates(config.rates, savedRates);
+  const quotes = config.quotes.flatMap((c) => saved?.quotes.filter((q) => q.symbol === c.symbol) ?? []);
+  const [flipped, toggle] = useFlipped();
   const rateDate = rates[0]?.as_of;
   return (
     <>
@@ -103,10 +129,20 @@ export function MarketsCard({ config, saved }: { config: MarketsConfig; saved: M
         <section className="mk-group">
           <h3>汇率 <span className="muted">{live ? "欧洲央行参考价" : "保存的"} · {rateDate && md(rateDate)}</span></h3>
           <ul className="mk-list">
-            {rates.map((r) => (
-              <Row key={`${r.base}${r.quote}`} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
-                previous={previous(r.history, r.as_of)} history={r.history} />
-            ))}
+            {rates.map((saved) => {
+              const pair = `${saved.base}${saved.quote}`;
+              const r = flipped.has(pair) ? flip(saved) : saved;
+              return (
+                <Row key={pair} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
+                  previous={previous(r.history, r.as_of)} history={r.history}
+                  lead={<button type="button" className="mk-swap" onClick={() => toggle(pair)}
+                    title={`换成 ${r.quote}/${r.base}`} aria-label={`换成 ${r.quote}/${r.base}`}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3" />
+                    </svg>
+                  </button>} />
+              );
+            })}
           </ul>
         </section>
       )}

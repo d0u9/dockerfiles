@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Digest, Markets, Month, SiteIndex, Weather } from "../../shared/types.ts";
-import { type Config, dayDir, days, dirs, log, now, ordered, readJson, writeJson } from "./common.ts";
+import { type Config, dashboardFor, dayDir, days, dirs, log, now, ordered, readJson, writeJson } from "./common.ts";
 
 function dayEntry(config: Config, date: string): Month["days"][number] {
   const directory = dayDir(dirs.data, date);
@@ -101,6 +101,7 @@ export function run(config: Config, rebuildAll = false): void {
     links: config.links,
     clocks: config.clocks,
     holidays: config.holidays,
+    dashboards: Object.fromEntries(Object.keys(config.users).map((u) => [u, dashboardFor(config, u)])),
   };
   writeJson(path.join(data, "index.json"), index, undefined);
   log("index", `${months.length} months, rebuilt ${rebuild.size}`);

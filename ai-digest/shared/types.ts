@@ -110,6 +110,11 @@ export interface SiteIndex {
   links: LinkGroup[];
   clocks: Clock[];
   holidays: HolidayRegion[];
+  /** Each configured person's dashboard, their own parts or the shared ones. */
+  dashboards: Record<string, {
+    weather: { name: string; latitude: number; longitude: number }[];
+    links: LinkGroup[]; clocks: Clock[]; holidays: HolidayRegion[]; markets: MarketsConfig;
+  }>;
 }
 
 /** `data/months/YYYY-MM.json` on the website (9.1). */

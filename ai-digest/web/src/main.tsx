@@ -1,6 +1,7 @@
 // Hash routes, so the web server needs no rewrite rules (DESIGN 9.2):
 //
 //   #/                    home: today, then the history as a timeline
+//   #/home/alice          the same, with alice's news: a bookmark for her
 //   #/2026-09             a month
 //   #/archive             every month
 //   #/alice               alice's months
@@ -23,6 +24,7 @@ function route(hash: string) {
   const [a, b, c] = parts;
   if (parts.length === 0) return <Home />;
   if (parts.length === 1 && a === "archive") return <Archive />;
+  if (parts.length === 2 && a === "home" && NAME.test(b!)) return <Home user={b!} />;
   if (parts.length === 1 && MONTH.test(a!)) return <MonthPage month={a!} />;
   if (parts.length === 1 && NAME.test(a!)) return <Person user={a!} />;
   if (parts.length === 2 && NAME.test(a!) && MONTH.test(b!)) return <PersonMonth user={a!} month={b!} />;

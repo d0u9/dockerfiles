@@ -44,7 +44,21 @@ export function duration(value: string): number {
 // ---- configuration -------------------------------------------------------
 
 export interface Place { name: string; latitude: number; longitude: number }
-export interface UserSettings { sections: string[]; skip_feeds: string[] }
+/** What the dashboard shows around the news. Each person may have their own. */
+export interface Dashboard {
+  weather: Place[];
+  links: LinkGroup[];
+  clocks: Clock[];
+  holidays: HolidayRegion[];
+  markets: MarketsConfig;
+}
+export const DASHBOARD_KEYS = ["weather", "links", "clocks", "holidays", "markets"] as const;
+export interface UserSettings {
+  sections: string[];
+  skip_feeds: string[];
+  /** The person's own dashboard; each part left out is the shared one. */
+  dashboard: Partial<Dashboard>;
+}
 export interface Config {
   version: 1;
   timezone: string;
@@ -104,6 +118,107 @@ function validTimezone(tz: string): boolean {
 }
 
 /**
+ * The dashboard's parts at `where` in the configuration: the top level, where
+ * each is required to exist in the result (`all`), or a person's, where only
+ * the parts given are.
+ */
+function dashboardOf(where: string, raw: Record<string, unknown>, all: boolean): Partial<Dashboard> {
+  const out: Record<string, unknown> = {};
+  if (all || "weather" in raw) {
+  const places = raw.weather ?? [];
+  if (!Array.isArray(places)) throw new Failure(`config: ${where}weather must be a list`);
+  places.forEach((p: unknown, i) => {
+    const keys = ["latitude", "longitude", "name"];
+    if (!isObject(p) || Object.keys(p).sort().join() !== keys.join()) {
+      throw new Failure(`config: ${where}weather[${i}] must have exactly ${keys.join(", ")}`);
+    }
+    check(`${where}weather[${i}].name`, p.name, "string");
+    for (const k of ["latitude", "longitude"]) {
+      if (typeof p[k] !== "number") throw new Failure(`config: ${where}weather[${i}].${k} must be a number`);
+    }
+  });
+  out.weather = places;
+  }
+
+  // Groups of links for the dashboard, such as pages to look up rates or
+  // quotes. Nothing is built in.
+  if (all || "links" in raw) {
+  const links = raw.links ?? [];
+  if (!Array.isArray(links)) throw new Failure(`config: ${where}links must be a list`);
+  links.forEach((g: unknown, i) => {
+    if (!isObject(g) || typeof g.title !== "string" || !g.title || !Array.isArray(g.items)) {
+      throw new Failure(`config: ${where}links[${i}] must have a title and a list of items`);
+    }
+    unknownKey(`${where}links[${i}].`, g, ["title", "items"]);
+    g.items.forEach((item: unknown, j) => {
+      if (!isObject(item) || Object.keys(item).sort().join() !== "name,url"
+        || typeof item.name !== "string" || !item.name || typeof item.url !== "string" || !/^https?:\/\//.test(item.url)) {
+        throw new Failure(`config: ${where}links[${i}].items[${j}] must have exactly name and an http(s) url`);
+      }
+    });
+  });
+  out.links = links;
+  }
+
+  // Clocks on the dashboard: a name and an IANA time zone each.
+  if (all || "clocks" in raw) {
+  const clocks = raw.clocks ?? [];
+  if (!Array.isArray(clocks)) throw new Failure(`config: ${where}clocks must be a list`);
+  clocks.forEach((c: unknown, i) => {
+    if (!isObject(c) || Object.keys(c).sort().join() !== "name,timezone"
+      || typeof c.name !== "string" || !c.name || typeof c.timezone !== "string") {
+      throw new Failure(`config: ${where}clocks[${i}] must have exactly name and timezone`);
+    }
+    try { new Intl.DateTimeFormat("en", { timeZone: c.timezone }); } catch {
+      throw new Failure(`config: ${where}clocks[${i}].timezone ${JSON.stringify(c.timezone)} is not a time zone`);
+    }
+  });
+  out.clocks = clocks;
+  }
+
+  // Whose public holidays the dashboard lists: an ISO 3166 country code and,
+  // optionally, a subdivision such as AU-NSW for its regional holidays.
+  if (all || "holidays" in raw) {
+  const holidays = raw.holidays ?? [];
+  if (!Array.isArray(holidays)) throw new Failure(`config: ${where}holidays must be a list`);
+  holidays.forEach((h: unknown, i) => {
+    if (!isObject(h) || typeof h.name !== "string" || !h.name
+      || typeof h.country !== "string" || !/^[A-Z]{2}$/.test(h.country)
+      || (h.region !== undefined && (typeof h.region !== "string" || !h.region.startsWith(`${h.country}-`)))) {
+      throw new Failure(`config: ${where}holidays[${i}] must have a name, a two-letter country and optionally a region like AU-NSW`);
+    }
+    unknownKey(`${where}holidays[${i}].`, h, ["name", "country", "region"]);
+  });
+  out.holidays = holidays;
+  }
+
+  // Exchange rates by ISO 4217 code, and quotes by Yahoo Finance symbol.
+  if (all || "markets" in raw) {
+  const markets = raw.markets ?? {};
+  if (!isObject(markets)) throw new Failure(`config: ${where}markets must be an object`);
+  unknownKey(`${where}markets.`, markets, ["rates", "quotes"]);
+  const rates = markets.rates ?? [];
+  const quotes = markets.quotes ?? [];
+  if (!Array.isArray(rates) || !Array.isArray(quotes)) throw new Failure(`config: ${where}markets.rates and markets.quotes must be lists`);
+  rates.forEach((r: unknown, i) => {
+    if (!isObject(r) || Object.keys(r).sort().join() !== "base,quote"
+      || typeof r.base !== "string" || !/^[A-Z]{3}$/.test(r.base)
+      || typeof r.quote !== "string" || !/^[A-Z]{3}$/.test(r.quote)) {
+      throw new Failure(`config: ${where}markets.rates[${i}] must have exactly base and quote, three-letter currency codes`);
+    }
+  });
+  quotes.forEach((q: unknown, i) => {
+    if (!isObject(q) || Object.keys(q).sort().join() !== "name,symbol"
+      || typeof q.name !== "string" || !q.name || typeof q.symbol !== "string" || !/^[\w^.=-]{1,20}$/.test(q.symbol)) {
+      throw new Failure(`config: ${where}markets.quotes[${i}] must have exactly name and a Yahoo Finance symbol`);
+    }
+  });
+  out.markets = { rates, quotes };
+  }
+  return out as Partial<Dashboard>;
+}
+
+/**
  * Read and validate config.json, then apply environment overrides. An
  * unknown key or a wrong type stops the program: a misspelt key that was
  * silently ignored would look like a setting that does not work.
@@ -148,11 +263,12 @@ export function loadConfig(directory = dirs.config): Config {
   for (const [name, given] of Object.entries(users)) {
     if (!NAME.test(name)) throw new Failure(`config: user name ${JSON.stringify(name)} must match ${NAME.source}`);
     // The day's weather and markets sit beside each person's <user>.json.
-    if (name === "weather" || name === "markets") throw new Failure(`config: ${name} cannot be a user name`);
+    if (["weather", "markets", "home", "archive"].includes(name)) throw new Failure(`config: ${name} cannot be a user name`);
     const s = given ?? {};
     if (!isObject(s)) throw new Failure(`config: users.${name} must be an object`);
-    unknownKey(`users.${name}.`, s, ["sections", "skip_feeds"]);
+    unknownKey(`users.${name}.`, s, ["sections", "skip_feeds", ...DASHBOARD_KEYS]);
     for (const [key, value] of Object.entries(s)) {
+      if ((DASHBOARD_KEYS as readonly string[]).includes(key)) continue;
       if (!Array.isArray(value) || !value.every((v) => typeof v === "string" && v !== "")) {
         throw new Failure(`config: users.${name}.${key} must be a list of strings`);
       }
@@ -160,91 +276,15 @@ export function loadConfig(directory = dirs.config): Config {
     settings[name] = {
       sections: [...(s.sections as string[] | undefined ?? [])],
       skip_feeds: [...(s.skip_feeds as string[] | undefined ?? [])],
+      dashboard: {},
     };
   }
   out.users = settings;
 
-  const places = raw.weather ?? [];
-  if (!Array.isArray(places)) throw new Failure("config: weather must be a list");
-  places.forEach((p: unknown, i) => {
-    const keys = ["latitude", "longitude", "name"];
-    if (!isObject(p) || Object.keys(p).sort().join() !== keys.join()) {
-      throw new Failure(`config: weather[${i}] must have exactly ${keys.join(", ")}`);
-    }
-    check(`weather[${i}].name`, p.name, "string");
-    for (const k of ["latitude", "longitude"]) {
-      if (typeof p[k] !== "number") throw new Failure(`config: weather[${i}].${k} must be a number`);
-    }
-  });
-  out.weather = places;
-
-  // Groups of links for the dashboard, such as pages to look up rates or
-  // quotes. Nothing is built in.
-  const links = raw.links ?? [];
-  if (!Array.isArray(links)) throw new Failure("config: links must be a list");
-  links.forEach((g: unknown, i) => {
-    if (!isObject(g) || typeof g.title !== "string" || !g.title || !Array.isArray(g.items)) {
-      throw new Failure(`config: links[${i}] must have a title and a list of items`);
-    }
-    unknownKey(`links[${i}].`, g, ["title", "items"]);
-    g.items.forEach((item: unknown, j) => {
-      if (!isObject(item) || Object.keys(item).sort().join() !== "name,url"
-        || typeof item.name !== "string" || !item.name || typeof item.url !== "string" || !/^https?:\/\//.test(item.url)) {
-        throw new Failure(`config: links[${i}].items[${j}] must have exactly name and an http(s) url`);
-      }
-    });
-  });
-  out.links = links;
-
-  // Clocks on the dashboard: a name and an IANA time zone each.
-  const clocks = raw.clocks ?? [];
-  if (!Array.isArray(clocks)) throw new Failure("config: clocks must be a list");
-  clocks.forEach((c: unknown, i) => {
-    if (!isObject(c) || Object.keys(c).sort().join() !== "name,timezone"
-      || typeof c.name !== "string" || !c.name || typeof c.timezone !== "string") {
-      throw new Failure(`config: clocks[${i}] must have exactly name and timezone`);
-    }
-    try { new Intl.DateTimeFormat("en", { timeZone: c.timezone }); } catch {
-      throw new Failure(`config: clocks[${i}].timezone ${JSON.stringify(c.timezone)} is not a time zone`);
-    }
-  });
-  out.clocks = clocks;
-
-  // Whose public holidays the dashboard lists: an ISO 3166 country code and,
-  // optionally, a subdivision such as AU-NSW for its regional holidays.
-  const holidays = raw.holidays ?? [];
-  if (!Array.isArray(holidays)) throw new Failure("config: holidays must be a list");
-  holidays.forEach((h: unknown, i) => {
-    if (!isObject(h) || typeof h.name !== "string" || !h.name
-      || typeof h.country !== "string" || !/^[A-Z]{2}$/.test(h.country)
-      || (h.region !== undefined && (typeof h.region !== "string" || !h.region.startsWith(`${h.country}-`)))) {
-      throw new Failure(`config: holidays[${i}] must have a name, a two-letter country and optionally a region like AU-NSW`);
-    }
-    unknownKey(`holidays[${i}].`, h, ["name", "country", "region"]);
-  });
-  out.holidays = holidays;
-
-  // Exchange rates by ISO 4217 code, and quotes by Yahoo Finance symbol.
-  const markets = raw.markets ?? {};
-  if (!isObject(markets)) throw new Failure("config: markets must be an object");
-  unknownKey("markets.", markets, ["rates", "quotes"]);
-  const rates = markets.rates ?? [];
-  const quotes = markets.quotes ?? [];
-  if (!Array.isArray(rates) || !Array.isArray(quotes)) throw new Failure("config: markets.rates and markets.quotes must be lists");
-  rates.forEach((r: unknown, i) => {
-    if (!isObject(r) || Object.keys(r).sort().join() !== "base,quote"
-      || typeof r.base !== "string" || !/^[A-Z]{3}$/.test(r.base)
-      || typeof r.quote !== "string" || !/^[A-Z]{3}$/.test(r.quote)) {
-      throw new Failure(`config: markets.rates[${i}] must have exactly base and quote, three-letter currency codes`);
-    }
-  });
-  quotes.forEach((q: unknown, i) => {
-    if (!isObject(q) || Object.keys(q).sort().join() !== "name,symbol"
-      || typeof q.name !== "string" || !q.name || typeof q.symbol !== "string" || !/^[\w^.=-]{1,20}$/.test(q.symbol)) {
-      throw new Failure(`config: markets.quotes[${i}] must have exactly name and a Yahoo Finance symbol`);
-    }
-  });
-  out.markets = { rates, quotes };
+  Object.assign(out, dashboardOf("", raw, true));
+  for (const [name, given] of Object.entries(users)) {
+    settings[name]!.dashboard = dashboardOf(`users.${name}.`, given as Record<string, unknown> ?? {}, false);
+  }
 
   for (const [section, key, variable] of ENV) {
     const value = process.env[variable];
@@ -258,6 +298,30 @@ export function loadConfig(directory = dirs.config): Config {
   duration(config.pull.since);
   duration(config.pull.max_window);
   return config;
+}
+
+/** A person's dashboard: their own parts, the shared ones for the rest. */
+export function dashboardFor(config: Config, user: string): Dashboard {
+  const own = config.users[user]?.dashboard ?? {};
+  return {
+    weather: own.weather ?? config.weather, links: own.links ?? config.links, clocks: own.clocks ?? config.clocks,
+    holidays: own.holidays ?? config.holidays, markets: own.markets ?? config.markets,
+  };
+}
+
+/** Every place, rate and quote anyone's dashboard shows, each once: what the
+ *  day's weather and markets are fetched for. */
+export function everything(config: Config): { weather: Place[]; markets: MarketsConfig } {
+  const all = [config.weather, ...Object.keys(config.users).map((u) => dashboardFor(config, u).weather)].flat();
+  const boards = [config.markets, ...Object.keys(config.users).map((u) => dashboardFor(config, u).markets)];
+  const once = <T>(xs: T[], key: (x: T) => string) => [...new Map(xs.map((x) => [key(x), x])).values()];
+  return {
+    weather: once(all, (p) => `${p.name}@${p.latitude},${p.longitude}`),
+    markets: {
+      rates: once(boards.flatMap((b) => b.rates), (r) => `${r.base}/${r.quote}`),
+      quotes: once(boards.flatMap((b) => b.quotes), (q) => q.symbol),
+    },
+  };
 }
 
 export function userOrFail(config: Config, user: string): UserSettings {

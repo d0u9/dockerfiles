@@ -78,7 +78,7 @@ a.chip:hover, button.chip:hover { background: var(--accent-soft); color: var(--l
 
 /* ---- home: the dashboard, one screen high on a desktop --------------------- */
 main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-left: 32px; padding-right: 56px; }
-.dashboard { height: 100svh; display: flex; flex-direction: column; gap: 16px; padding: 20px 0 12px; }
+.dashboard { zoom: var(--z, 1); height: calc(100svh / var(--z, 1)); display: flex; flex-direction: column; gap: 16px; padding: 20px 0 12px; }
 .dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
 .dash-head h1 { margin: 0; }
 .dash-sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
@@ -90,9 +90,11 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 }
 .dash-col { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
 .dash-card { margin: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; flex: 0 1 auto; }
-.dash-news, .dash-weather, .dash-markets { flex-grow: 1; }
+.dash-news, .dash-calendar, .dash-markets { flex-grow: 1; }
 /* Small cards keep their size; the big ones give way and scroll. */
 .dash-clocks, .dash-links { flex-shrink: 0; }
+/* The weather gives way to the calendar, down to its place and the next hours. */
+.dash-weather { flex: 0 1 300px; min-height: 260px; }
 /* What does not fit scrolls inside its card, without a bar: the bottom fades
    out and a small button says more is below (Scroller in ui.tsx). */
 .scroller { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -144,6 +146,12 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 /* Clocks: a face like the system's, light by day and dark at night. */
 .clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; }
 .clock { margin: 0; text-align: center; }
+.clock-digits { font-size: 27px; font-weight: 500; letter-spacing: -.5px; text-anchor: middle; dominant-baseline: middle; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.clock-ampm { font-size: 11px; text-anchor: middle; fill: var(--ink); opacity: .55; }
+/* A two-way switch in a card's head. */
+.seg { display: inline-flex; padding: 2px; border: 0; border-radius: 7px; background: var(--hover); font: inherit; font-size: 11px; cursor: pointer; }
+.seg span { padding: 1px 7px; border-radius: 5px; color: var(--muted); }
+.seg span[aria-current] { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
 .clock figcaption { display: flex; flex-direction: column; line-height: 1.35; font-size: 13px; margin-top: 6px; }
 .clock figcaption strong { font-weight: 600; }
 .clock figcaption .muted { font-size: 12px; }
@@ -160,8 +168,6 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 .pin { fill: var(--face); stroke: var(--ink); stroke-width: 1.4; }
 
 /* Calendar. */
-.cal-lunar { font-size: 17px; font-weight: 600; }
-.cal-lunar + .muted { font-size: 13px; }
 .cal-term { color: var(--link); margin-left: 4px; }
 .link-list { list-style: none; margin: 0; padding: 0; }
 .link-list li { margin: 0; padding: 8px 0; border-top: 1px solid var(--line); }
@@ -172,6 +178,46 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 .cal-holidays li > .muted:first-child { flex: none; font-size: 12px; }
 .cal-when { margin-left: auto; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 .cal-today { font-weight: 600; }
+/* The month, as Apple's calendar draws it. */
+.cal-month-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 4px; font-size: 15px; }
+.cal-nav { display: flex; gap: 2px; }
+.cal-nav button {
+  min-width: 28px; height: 26px; padding: 0 8px; border: 0; border-radius: 7px; background: none;
+  color: var(--link); font: inherit; font-size: 13px; cursor: pointer;
+}
+.cal-nav button:first-child, .cal-nav button:last-child { font-size: 18px; line-height: 1; }
+.cal-nav button:hover:not(:disabled) { background: var(--hover); }
+.cal-nav button:disabled { color: var(--faint); cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.cal-wd { text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 4px; }
+.cal-day {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 2px 0; border: 0; border-radius: 10px; background: none; color: var(--fg); font: inherit; cursor: pointer;
+}
+.cal-day:hover { background: var(--hover); }
+.cal-num {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.cal-sub { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; font-size: 10px; color: var(--muted); }
+.cal-marked .cal-sub { color: var(--up); }
+.cal-weekend .cal-num { color: var(--muted); }
+.cal-out { opacity: .35; }
+.cal-day.is-selected { background: var(--accent-soft); }
+.cal-day.is-today .cal-num { background: var(--up); color: #fff; }
+.cal-badge {
+  position: absolute; top: 1px; right: 2px; font-size: 9px; font-weight: 600; line-height: 1; color: var(--down);
+}
+.cal-badge.work { color: var(--up); }
+.cal-badge.inline {
+  position: static; margin-left: 6px; padding: 1px 4px; border-radius: 4px; font-size: 11px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.cal-detail { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--hover); font-size: 13px; display: grid; gap: 3px; }
+
+/* A weekend worked in exchange for a holiday (调休). */
+.cal-holidays li > .cal-work { min-width: 0; }
+.cal-work { margin-left: 6px; padding: 0 4px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--up); background: color-mix(in srgb, var(--up) 12%, transparent); }
 
 /* Weather: here in detail, the other places one row each. */
 .wx-here { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -182,7 +228,7 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 .wx-facts div { display: contents; }
 .wx-facts dt { color: var(--muted); }
 .wx-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
-.hourly { width: 100%; height: auto; margin: 12px 0 8px; overflow: visible; }
+.hourly { width: 100%; height: auto; max-height: 96px; margin: 8px 0 6px; overflow: visible; }
 .hourly-empty { aspect-ratio: 300 / 92; }
 .temp-line { fill: none; stroke: #f5a524; stroke-width: 2; stroke-linejoin: round; }
 .rain { fill: var(--link); opacity: .35; }
@@ -208,6 +254,14 @@ tbody tr + tr td { border-top: 1px solid var(--line); }
 .mk-group h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
 .mk-group h3 .muted { font-weight: 400; font-size: 12px; margin-left: 4px; }
 .mk-list { list-style: none; margin: 0; padding: 0; }
+.mk-item { display: flex; align-items: center; gap: 2px; }
+.mk-item > .mk-row { flex: 1; min-width: 0; }
+.mk-swap {
+  flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted); cursor: pointer;
+}
+.mk-swap svg { width: 12px; height: 12px; }
+.mk-swap:hover { border-color: var(--link); color: var(--link); background: var(--accent-soft); }
 .mk-row {
   display: grid; grid-template-columns: minmax(0, 1fr) 56px auto 64px; align-items: center; gap: 10px;
   padding: 7px 4px; margin: 0 -4px; border-radius: 8px; color: inherit;
@@ -237,6 +291,7 @@ a.mk-row:hover { background: var(--hover); text-decoration: none; }
   .dash-col:first-child { grid-row: span 2; }
   .dash-col:nth-child(3) { grid-column: 2; }
   .dash-card, .dash-news { overflow: visible; }
+  .dash-weather { flex: none; min-height: 0; }
   .scroller-body { overflow: visible; }
 }
 /* A phone: one list in the order of the day -- the time, the weather, then

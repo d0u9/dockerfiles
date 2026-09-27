@@ -22,6 +22,7 @@ import path from "node:path";
 import type { Article, Digest, Markets, PulledArticle, Weather } from "../../shared/types.ts";
 import { fetchMarkets } from "./markets.ts";
 import {
+  everything,
   ASSETS, type Config, Failure, type Moment, type Place, VERSION, dayDir, dirs, log, now,
   readJson, readJsonl, readText, sha256, userOrFail, writeAtomic, writeJson, writeJsonl,
 } from "./common.ts";
@@ -200,23 +201,40 @@ export async function fetchWeather(places: Place[], moment: Moment): Promise<Wea
   }
 }
 
-/** Fetch the day's weather once: skip it when the day already has it. */
+/** The day's saved copy of a file, from the spool or the data repository. */
+function today<T extends { date: string }>(name: string, moment: Moment): T | null {
+  const spooled = readJson<T>(path.join(dirs.spool, name));
+  if (spooled?.date === moment.date) return spooled;
+  return readJson<T>(path.join(dayDir(dirs.data, moment.date), name));
+}
+
+/**
+ * Fetch the day's weather once, for every place anyone's dashboard shows:
+ * skip it when the day already has all of them. A place added to the
+ * configuration is fetched on the next run, not the next day.
+ */
 async function weather(config: Config, moment: Moment): Promise<void> {
-  if (!config.weather.length) return;
+  const places = everything(config).weather;
+  if (!places.length) return;
+  const have = today<Weather>("weather.json", moment);
+  const known = new Set(have?.places.map((p) => `${p.name}@${p.latitude},${p.longitude}`));
+  if (have && places.every((p) => known.has(`${p.name}@${p.latitude},${p.longitude}`))) return;
   const spooled = path.join(dirs.spool, "weather.json");
-  const stored = path.join(dayDir(dirs.data, moment.date), "weather.json");
-  if (fs.existsSync(stored) || readJson<Weather>(spooled)?.date === moment.date) return;
-  const result = await fetchWeather(config.weather, moment);
+  const result = await fetchWeather(places, moment);
   if (result) writeJson(spooled, result);
 }
 
 /** Fetch the day's rates and quotes once, like the weather. */
 async function markets(config: Config, moment: Moment): Promise<void> {
-  if (!config.markets.rates.length && !config.markets.quotes.length) return;
+  const wanted = everything(config).markets;
+  if (!wanted.rates.length && !wanted.quotes.length) return;
+  const have = today<Markets>("markets.json", moment);
+  const rates = new Set(have?.rates.map((r) => `${r.base}/${r.quote}`));
+  const quotes = new Set(have?.quotes.map((q) => q.symbol));
+  if (have && wanted.rates.every((r) => rates.has(`${r.base}/${r.quote}`))
+    && wanted.quotes.every((q) => quotes.has(q.symbol))) return;
   const spooled = path.join(dirs.spool, "markets.json");
-  const stored = path.join(dayDir(dirs.data, moment.date), "markets.json");
-  if (fs.existsSync(stored) || readJson<Markets>(spooled)?.date === moment.date) return;
-  const result = await fetchMarkets(config.markets, moment);
+  const result = await fetchMarkets(wanted, moment);
   if (result) writeJson(spooled, result);
 }
 

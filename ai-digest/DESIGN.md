@@ -343,7 +343,7 @@ The deployment renders one directory and bind-mounts it read-only at
   pages to look up exchange rates or quotes. Only `http` and `https` links are
   accepted. The image has none of its own; `index` copies them into
   `index.json`.
-- `clocks`: analogue clocks on the dashboard, a name and an IANA time zone
+- `clocks`: clocks on the dashboard, a name and an IANA time zone
   each.
 - `holidays`: whose public holidays the calendar card lists, by ISO 3166
   country code, optionally with a subdivision (`AU-NSW`) for its regional
@@ -355,6 +355,12 @@ The deployment renders one directory and bind-mounts it read-only at
   Open-Meteo; the other places get one row each.
 - Each person's `sections` and `skip_feeds` are optional, with the
   same meaning as in the first version.
+- A person may also have their own `weather`, `links`, `clocks`, `holidays`
+  and `markets`, in the same form as the shared ones; each part left out is
+  the shared one. The index carries every person's resolved dashboard in
+  `dashboards`. The day's `weather.json` and `markets.json` hold everyone's
+  places, rates and quotes, fetched once; the page keeps the person's. A run
+  that finds one missing from the day's file fetches the file again.
 - The order of the keys in `users` is the default order of people on the
   website.
 - Single runs can override individual values through environment variables
@@ -577,7 +583,8 @@ rewrite rules:
 
 | Route | Shows |
 |---|---|
-| `#/` | Home, two pages that switch rather than scroll. **Dashboard**: one screen high on a desktop, for the latest day, in three columns weighted by what is read. The widest holds the news, the only card that is a person's, chosen by a tab remembered in the browser: the day's summary to read first, the articles most worth opening (title, source, why), and the sections as chips that open the digest at that section; what does not fit scrolls inside the card and fades at its edge. The second holds one weather card (here in detail, the other places one row each) and the calendar (lunar date, the next solar term, upcoming public holidays); the third the analogue clocks, the markets (each rate and quote with its value, the day's change, red up and green down, and a month's trend line) and any link groups. Every card opens with the same small label. A card with nothing to show is left out. **History**: a timeline of earlier days, newest first, with sticky month headers; each node is a day with its weather strip and one card per person, loading one month file at a time as its end comes into view. On a large screen one turn of the wheel, a swipe or a key moves between the two pages, with a pager on the right edge. Below 1100 pixels wide or 680 high the dashboard becomes two columns and the page simply scrolls; on a phone the cards are one list in the order clocks, calendar, weather, news, markets, links |
+| `#/` | Home, two pages that switch rather than scroll. **Dashboard**: one screen high on a desktop, for the latest day, in three columns weighted by what is read. The widest holds the news, chosen by a tab remembered in the browser; every other card also follows the person where they have their own dashboard: the day's summary to read first, the articles most worth opening (title, source, why), and the sections as chips that open the digest at that section; what does not fit scrolls inside the card and fades at its edge. The second holds one weather card (here in detail, the other places one row each) and the calendar (the month as a grid from Monday, each day with its lunar day, solar term or holiday and a 休 or 班 mark, and a day chosen in it, today at first, described below: its lunar date, solar term or the next one, and holidays; then the upcoming holidays. China's come from holiday-cn as whole runs of days off, with the weekends worked in exchange); the third the clocks (hands or digits, a switch remembered in the browser), the markets (each rate and quote with its value, the day's change, red up and green down, and a month's trend line) and any link groups. Every card opens with the same small label. A card with nothing to show is left out. **History**: a timeline of earlier days, newest first, with sticky month headers; each node is a day with its weather strip and one card per person, loading one month file at a time as its end comes into view. On a large screen one turn of the wheel, a swipe or a key moves between the two pages, with a pager on the right edge. Below 1100 pixels wide or 680 high the dashboard becomes two columns and the page simply scrolls; on a phone the cards are one list in the order clocks, calendar, weather, news, markets, links |
+| `#/home/alice` | Home with alice's news, whatever the browser remembers: choosing another tab rewrites the address to that person, so a bookmark keeps them. `home` and `archive` cannot be user names |
 | `#/2026-09` | Month: one row per day, as on the home page; previous and next month |
 | `#/archive` | Archive: months by year, with day and article counts |
 | `#/alice` | alice's months |

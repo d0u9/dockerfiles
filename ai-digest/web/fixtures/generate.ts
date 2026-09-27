@@ -133,7 +133,7 @@ const config: Config = {
   freshrss: { url: null, timeout: 30 },
   codex: { model: null, reasoning_effort: null, timeout: 0 },
   pull: { since: "24h", max_window: "7d", max_chars: 4000, unread_only: false },
-  users: Object.fromEntries(Object.keys(USERS).map((u) => [u, { sections: SECTIONS, skip_feeds: [] }])),
+  users: Object.fromEntries(Object.keys(USERS).map((u) => [u, { sections: SECTIONS, skip_feeds: [], dashboard: {} }])),
   weather: PLACES,
   links: [
     { title: "Links", items: [{ name: "Example", url: "https://example.com/" }, { name: "Sample", url: "https://example.org/" }] },
@@ -151,6 +151,14 @@ const config: Config = {
     quotes: QUOTES.map(([name, symbol]) => ({ name, symbol })),
   },
   data: { branch: "main" },
+};
+// bob has an own dashboard: fewer places, other clocks, one rate
+// and two quotes, other links. The rest is the shared one.
+config.users.bob!.dashboard = {
+  weather: PLACES.slice(1, 3),
+  clocks: [{ name: "Here", timezone: "UTC" }, { name: "South", timezone: "Pacific/Auckland" }],
+  markets: { rates: [{ base: "USD", quote: "JPY" }], quotes: QUOTES.slice(3, 5).map(([name, symbol]) => ({ name, symbol })) },
+  links: [{ title: "Bob's", items: [{ name: "Example", url: "https://example.net/" }] }],
 };
 run(config, true);
 fs.rmSync(data, { recursive: true, force: true });
