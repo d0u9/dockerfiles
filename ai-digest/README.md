@@ -111,6 +111,13 @@ npm run dev -w web       # the website against that data
 ## Building
 
 ```sh
+./build.sh [version]
+```
+
+builds `ai-digest:<version>` (default `dev`) for this machine only, into the
+local image store, to try before publishing.
+
+```sh
 ./buildx.sh 0.1.0
 ```
 
