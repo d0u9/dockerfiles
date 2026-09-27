@@ -198,9 +198,15 @@ interface Detail {
 }
 
 /** The next 24 hours, sun, UV and air quality for one place, from Open-Meteo. */
+const details = new Map<string, Detail>();
+
 function useDetail(latitude: number, longitude: number): Detail | null {
-  const [detail, setDetail] = useState<Detail | null>(null);
+  // Keyed by place, so a place opened again shows at once, and another
+  // place's figures never stand in while this one loads.
+  const key = `${latitude},${longitude}`;
+  const [, setLoaded] = useState(0);
   useEffect(() => {
+    if (details.has(key)) return;
     const where = { latitude: String(latitude), longitude: String(longitude), timezone: "auto" };
     const forecast = new URLSearchParams({
       ...where, hourly: "temperature_2m,precipitation_probability,uv_index",
@@ -219,16 +225,17 @@ function useDetail(latitude: number, longitude: number): Detail | null {
       const hours = (f.hourly.time as string[]).slice(start, start + 25).map((time, i) => ({
         time, temperature: f.hourly.temperature_2m[start + i], rain: f.hourly.precipitation_probability[start + i] ?? 0,
       }));
-      setDetail({
+      details.set(key, {
         hours,
         sunrise: f.daily.sunrise[0], sunset: f.daily.sunset[0],
         uv: f.hourly.uv_index[start] ?? 0, uvMax: f.daily.uv_index_max[0] ?? 0,
         aqi: a?.current?.us_aqi ?? null, pm25: a?.current?.pm2_5 ?? null,
       });
+      setLoaded((n) => n + 1);
     }).catch(() => {});
     return () => controller.abort();
-  }, [latitude, longitude]);
-  return detail;
+  }, [key, latitude, longitude]);
+  return details.get(key) ?? null;
 }
 
 /** Temperature as a line, the chance of rain as bars beneath it. */
@@ -268,46 +275,46 @@ function uvText(uv: number): string {
 /**
  * One card for all the weather: the first configured place is here, with its
  * next 24 hours, sun, UV and air; the others get a row each with the sky and
- * the day's low and high.
+ * the day's low and high. Clicking a row opens that place in its stead.
  */
 export function WeatherCard({ saved }: { saved: Weather }) {
   const { weather, live } = useLiveWeather(saved);
-  const [here, ...others] = weather.places;
-  const detail = useDetail(here!.latitude, here!.longitude);
+  const [open, setOpen] = useState(0);
+  const place = weather.places[open] ?? weather.places[0]!;
+  const detail = useDetail(place.latitude, place.longitude);
   const r = (n: number) => Math.round(n);
   return (
     <>
       <div className="card-head"><h2>天气</h2><span className="muted">{live ? "现在" : `${saved.fetched_at.slice(11, 16)} 保存`}</span></div>
-      <div className="wx-here">
-        <div className="wx-now">
-          <div className="muted">{here!.name}</div>
-          <div className="wx-big"><span>{r(here!.now.temperature)}°</span><SkyIcon code={here!.now.code} /></div>
-          <div className="muted">{sky(here!.now.code).text} · {r(here!.today.min)}–{r(here!.today.max)}°</div>
-        </div>
-        <dl className="wx-facts">
-          {detail && <>
-            <div><dt>日出</dt><dd>{hhmm(detail.sunrise)}</dd></div>
-            <div><dt>日落</dt><dd>{hhmm(detail.sunset)}</dd></div>
-            <div><dt>紫外线</dt><dd>{r(detail.uv)} <span className="muted">最高 {r(detail.uvMax)} {uvText(detail.uvMax)}</span></dd></div>
-            {detail.aqi !== null && <div><dt>空气</dt><dd>{r(detail.aqi)} {aqiText(detail.aqi)}{detail.pm25 !== null && <span className="muted"> PM2.5 {r(detail.pm25)}</span>}</dd></div>}
-          </>}
-        </dl>
-      </div>
-      {detail && detail.hours.length > 1 && <HourlyChart hours={detail.hours} />}
-      {others.length > 0 && (
-        <table className="wx">
-          <tbody>
-            {others.map((p) => (
-              <tr key={`${p.name}@${p.latitude},${p.longitude}`}>
-                <td className="wx-name">{p.name}</td>
-                <td><SkyIcon code={p.today.code} className="icon-sm" /></td>
-                <td className="muted">{sky(p.today.code).text}</td>
-                <td className="num">{r(p.today.min)}–{r(p.today.max)}°</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <ul className="wx-list">
+        {weather.places.map((p, i) => i === open ? (
+          <li key={`${p.name}@${p.latitude},${p.longitude}`} className="wx-open">
+            <div className="wx-here">
+              <div className="wx-now">
+                <div className="muted">{p.name}</div>
+                <div className="wx-big"><span>{r(p.now.temperature)}°</span><SkyIcon code={p.now.code} /></div>
+                <div className="muted">{sky(p.now.code).text} · {r(p.today.min)}–{r(p.today.max)}°</div>
+              </div>
+              <dl className="wx-facts">
+                <div><dt>日出</dt><dd>{detail ? hhmm(detail.sunrise) : "—"}</dd></div>
+                <div><dt>日落</dt><dd>{detail ? hhmm(detail.sunset) : "—"}</dd></div>
+                <div><dt>紫外线</dt><dd>{detail ? <>{r(detail.uv)} <span className="muted">最高 {r(detail.uvMax)} {uvText(detail.uvMax)}</span></> : "—"}</dd></div>
+                <div><dt>空气</dt><dd>{detail?.aqi != null ? <>{r(detail.aqi)} {aqiText(detail.aqi)}{detail.pm25 !== null && <span className="muted"> PM2.5 {r(detail.pm25)}</span>}</> : "—"}</dd></div>
+              </dl>
+            </div>
+            {detail && detail.hours.length > 1 ? <HourlyChart hours={detail.hours} /> : <div className="hourly hourly-empty" />}
+          </li>
+        ) : (
+          <li key={`${p.name}@${p.latitude},${p.longitude}`}>
+            <button type="button" className="wx-row" aria-expanded="false" onClick={() => setOpen(i)}>
+              <span className="wx-name">{p.name}</span>
+              <SkyIcon code={p.today.code} className="icon-sm" />
+              <span className="muted">{sky(p.today.code).text}</span>
+              <span className="num">{r(p.today.min)}–{r(p.today.max)}°</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

@@ -6,6 +6,8 @@
 // directly. Quotes cannot be: Yahoo Finance does not allow a page on another
 // site to read its answers, so they stay as saved, with the time they are from.
 //
+// Each row opens Yahoo Finance's page for it in a new tab.
+//
 // Colours follow the Chinese convention the page is written for: red is up,
 // green is down.
 
@@ -65,20 +67,23 @@ function format(value: number): string {
   return value.toLocaleString("zh-CN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-function Row({ name, sub, value, previous, history }: {
-  name: string; sub?: string; value: number; previous: number | null; history: Series;
+/** Yahoo Finance's page for a symbol: the full chart, news and figures. */
+const detailUrl = (symbol: string) => `https://finance.yahoo.com/quote/${encodeURIComponent(symbol).replace("%3D", "=")}/`;
+
+function Row({ name, sub, symbol, value, previous, history }: {
+  name: string; sub?: string; symbol: string; value: number; previous: number | null; history: Series;
 }) {
   const change = previous ? (value - previous) / previous : null;
   const trend = change === null || Math.abs(change) < 0.00005 ? "flat" : change > 0 ? "up" : "down";
   return (
-    <li className="mk-row">
+    <li><a className="mk-row" href={detailUrl(symbol)} target="_blank" rel="noopener noreferrer" title={`${name} 详情`}>
       <span className="mk-name">{name}{sub && <span className="muted"> {sub}</span>}</span>
       <Spark history={history} />
       <span className="mk-value">{format(value)}</span>
       <span className={`mk-change ${trend}`}>
         {change === null ? "—" : `${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change * 100).toFixed(2)}%`}
       </span>
-    </li>
+    </a></li>
   );
 }
 
@@ -99,7 +104,7 @@ export function MarketsCard({ config, saved }: { config: MarketsConfig; saved: M
           <h3>汇率 <span className="muted">{live ? "欧洲央行参考价" : "保存的"} · {rateDate && md(rateDate)}</span></h3>
           <ul className="mk-list">
             {rates.map((r) => (
-              <Row key={`${r.base}${r.quote}`} name={`${r.base}/${r.quote}`} value={r.value}
+              <Row key={`${r.base}${r.quote}`} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
                 previous={previous(r.history, r.as_of)} history={r.history} />
             ))}
           </ul>
@@ -110,7 +115,7 @@ export function MarketsCard({ config, saved }: { config: MarketsConfig; saved: M
           <h3>股市 <span className="muted">截至 {md(saved!.fetched_at)} {saved!.fetched_at.slice(11, 16)}</span></h3>
           <ul className="mk-list">
             {quotes.map((q) => (
-              <Row key={q.symbol} name={q.name} value={q.value} previous={q.previous_close} history={q.history} />
+              <Row key={q.symbol} name={q.name} symbol={q.symbol} value={q.value} previous={q.previous_close} history={q.history} />
             ))}
           </ul>
         </section>

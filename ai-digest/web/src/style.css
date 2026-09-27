@@ -170,6 +170,7 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 .wx-facts dt { color: var(--muted); }
 .wx-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
 .hourly { width: 100%; height: auto; margin: 12px 0 8px; overflow: visible; }
+.hourly-empty { aspect-ratio: 300 / 92; }
 .temp-line { fill: none; stroke: #f5a524; stroke-width: 2; stroke-linejoin: round; }
 .rain { fill: var(--link); opacity: .35; }
 .t-label, .h-label { font-size: 8px; text-anchor: middle; fill: var(--muted); }
@@ -178,8 +179,16 @@ table { border-collapse: collapse; width: 100%; font-size: 14px; }
 td, th { padding: 6px 4px; text-align: left; font-weight: 400; white-space: nowrap; }
 tbody tr + tr td { border-top: 1px solid var(--line); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
-.wx-name { overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
-.wx td:nth-child(2) { width: 20px; }
+.wx-list { list-style: none; margin: 0; padding: 0; }
+.wx-list > li + li { border-top: 1px solid var(--line); }
+.wx-open { padding-bottom: 4px; }
+.wx-list > li + .wx-open { padding-top: 12px; }
+.wx-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 20px auto 5.5em; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 4px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.wx-row:hover { background: var(--hover); }
+.wx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Markets: the name, a month's trend, the value, the day's change. */
 .mk-group + .mk-group { margin-top: 14px; }
@@ -188,9 +197,10 @@ tbody tr + tr td { border-top: 1px solid var(--line); }
 .mk-list { list-style: none; margin: 0; padding: 0; }
 .mk-row {
   display: grid; grid-template-columns: minmax(0, 1fr) 56px auto 64px; align-items: center; gap: 10px;
-  padding: 7px 0; border-top: 1px solid var(--line);
+  padding: 7px 4px; margin: 0 -4px; border-radius: 8px; color: inherit;
 }
-.mk-row:first-child { border-top: 0; }
+.mk-list li + li { border-top: 1px solid var(--line); }
+a.mk-row:hover { background: var(--hover); text-decoration: none; }
 .mk-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mk-value { font-size: 15px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
 .mk-change {
