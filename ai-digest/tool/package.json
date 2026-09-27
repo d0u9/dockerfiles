@@ -1,0 +1,20 @@
+{
+  "name": "@ai-digest/tool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bundle": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist/ai-digest.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && npm run bundle",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test 'test/*.test.ts'"
+  },
+  "dependencies": {
+    "entities": "^6.0.0",
+    "htmlparser2": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "esbuild": "^0.25.0"
+  }
+}

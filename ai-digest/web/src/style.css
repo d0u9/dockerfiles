@@ -1,0 +1,243 @@
+:root {
+  --fg: #1d1d1f; --muted: #6e6e73; --bg: #fbfbfd; --card: #fff; --line: #e5e5ea; --link: #0a58ca;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --fg: #f2f2f7; --muted: #a1a1a6; --bg: #111113; --card: #1c1c1e; --line: #2c2c2e; --link: #6ea8fe; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+}
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1 { font-size: 1.6em; margin: 0 0 4px; }
+h2 { font-size: 1.2em; margin: 32px 0 8px; }
+.muted { color: var(--muted); font-size: .9em; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 10px 0; }
+ul { padding-left: 1.2em; }
+li { margin: 6px 0; overflow-wrap: anywhere; }
+nav { margin-bottom: 16px; }
+a.card { display: block; color: inherit; }
+a.card:hover { text-decoration: none; border-color: var(--link); }
+
+/* Each day's row: two people side by side, more wrap, one per row on a phone. */
+.day-row h2 { margin-bottom: 2px; }
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 8px; }
+.people .card { margin: 0; }
+.day p { margin: 6px 0 0; font-size: .95em; }
+.day .top { font-weight: 600; }
+.empty { opacity: .6; }
+.months { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.months .card { margin: 0; }
+
+.strip { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78em; font-variant-numeric: tabular-nums; }
+.strip span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+
+.weather-head { font-size: .8em; margin: 16px 0 6px; }
+.weather { display: grid; grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 10px; margin: 0 0 12px; }
+.weather .card { margin: 0; padding: 10px 12px 9px; line-height: 1.3; }
+.weather .name { font-size: .78em; color: var(--muted); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.weather .row { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.weather .temp { font-size: 1.75em; font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.weather .sky { font-size: .82em; margin-top: 2px; }
+.weather .range { font-size: .74em; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.weather .tomorrow {
+  display: flex; align-items: center; gap: 5px; white-space: nowrap; margin-top: 6px; padding-top: 5px;
+  border-top: 1px solid var(--line); font-size: .72em; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.weather .t-range { margin-left: auto; }
+.icon, .icon-sm { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.icon { width: 26px; height: 26px; color: var(--muted); stroke-width: 1.6; }
+.icon-sm { width: 14px; height: 14px; stroke-width: 1.8; }
+
+/* ---- home: the dashboard, exactly one screen high ------------------------ */
+main:has(.dashboard) { padding-top: 0; max-width: min(1440px, 100%); padding-left: 32px; padding-right: 56px; }
+@media (max-width: 760px) { main:has(.dashboard) { padding-left: 16px; padding-right: 16px; } }
+.dashboard { height: 100svh; display: flex; flex-direction: column; gap: 10px; padding: 16px 0 10px; }
+.dash-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.dash-head h1 { margin: 0; }
+.dash-head h1 .muted { font-size: .55em; font-weight: 400; margin-left: 6px; }
+/* Three columns: news and links, the weather, the clocks and the calendar. */
+.dash-grid { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 12px; }
+.dash-grid:has(.dash-weather) { grid-template-columns: 1.1fr 1.3fr 1fr; }
+.dash-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.dash-col > .dash-card { flex: 0 1 auto; }
+.dash-news, .dash-weather, .dash-calendar { flex-grow: 1 !important; }
+.dash-card { margin: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.card-head h2 { margin: 0; }
+.card-head .muted { font-size: .78em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* What does not fit is cut off and fades out; the link below shows the rest. */
+.card-more { margin-top: auto; align-self: flex-end; font-size: .85em; color: var(--link); }
+.news-card { display: block; color: inherit; }
+.news-card .card-more { margin: 0; }
+.news-card:hover { text-decoration: none; }
+.news-card:hover .card-more { text-decoration: underline; }
+.dash-news:has(.news-card:hover) { border-color: var(--link); }
+.link-group + .link-group { margin-top: 10px; }
+.link-group h3 { margin: 0 0 6px; font-size: .8em; font-weight: 500; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: .85em; white-space: nowrap;
+}
+a.chip:hover { border-color: var(--link); text-decoration: none; }
+.dash-card h2 { margin: 0 0 6px; font-size: 1.05em; }
+.news-count { font-size: .95em; }
+.news-count strong { font-size: 2.2em; font-weight: 300; letter-spacing: -.03em; margin-right: 4px; }
+.news-sections { margin-top: 6px; }
+.link-list { list-style: none; margin: 0; padding: 0; }
+.link-list li { margin: 0; padding: 5px 0; border-top: 1px solid var(--line); }
+.link-list li:first-child { border-top: 0; }
+.dash-card { overflow: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .88em; }
+td, th { padding: 3px 4px; text-align: left; font-weight: 400; white-space: nowrap; }
+tbody tr + tr td { border-top: 1px solid var(--line); }
+th { font-size: .8em; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.wx-name { overflow: hidden; text-overflow: ellipsis; max-width: 9em; }
+.wx td:nth-child(2), .wx td:nth-child(5) { width: 18px; }
+.change.up { color: #1a8f3c; }
+.change.down { color: #d12f2f; }
+.dash-foot { text-align: center; }
+.tabs { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.tabs button {
+  border: 0; background: none; color: var(--muted); font: inherit; font-size: .85em;
+  padding: 2px 12px; border-radius: 999px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--link); color: #fff; }
+
+.news-top { font-size: .85em; margin: 12px 0 4px; color: var(--muted); font-weight: 500; }
+.highlights { margin: 0; padding-left: 1.3em; font-size: .9em; line-height: 1.45; }
+.highlights li { margin: 0 0 6px; }
+.highlights a { color: var(--fg); }
+.highlights a:hover { color: var(--link); }
+
+/* Clocks: a face like the system's, light by day and dark at night. */
+.clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; }
+.clock { margin: 0; text-align: center; }
+.clock figcaption { display: flex; flex-direction: column; line-height: 1.3; font-size: .85em; margin-top: 4px; }
+.clock figcaption .muted { font-size: .85em; }
+.clock-face { width: 100%; max-width: 72px; aspect-ratio: 1; }
+.clock-face { --face: #fff; --ink: #1d1d1f; --edge: #d2d2d7; }
+.clock-face.night { --face: #1d1d1f; --ink: #f5f5f7; --edge: #3a3a3c; }
+.clock-dial { fill: var(--face); stroke: var(--edge); stroke-width: 1; }
+.tick { stroke: var(--ink); stroke-width: .5; opacity: .45; }
+.tick.hour { stroke-width: 1.1; opacity: .9; }
+.numeral { fill: var(--ink); font-size: 11px; font-weight: 500; text-anchor: middle; dominant-baseline: central; }
+.hand, .hand-neck { stroke: var(--ink); stroke-linecap: round; }
+.hand { stroke-width: 3.4; }
+.hand-neck { stroke-width: 1.4; }
+.pin { fill: var(--face); stroke: var(--ink); stroke-width: 1.4; }
+
+.cal-lunar { font-size: 1.05em; }
+.cal-term { color: var(--link); margin-left: 4px; }
+.cal-holidays { margin-top: 8px; font-size: .88em; }
+.cal-holidays li { display: flex; gap: 6px; align-items: baseline; }
+.cal-holidays li > .muted:first-child { flex: none; font-size: .9em; }
+.cal-when { margin-left: auto; white-space: nowrap; font-size: .9em; }
+.cal-today { font-weight: 600; }
+
+.wx-here { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wx-big { display: flex; align-items: center; gap: 8px; }
+.wx-big span { font-size: 2.6em; font-weight: 300; letter-spacing: -.03em; line-height: 1.1; }
+.wx-facts { margin: 0; display: grid; grid-template-columns: auto auto; gap: 2px 16px; font-size: .85em; align-content: center; }
+.wx-facts div { display: contents; }
+.wx-facts dt { color: var(--muted); }
+.wx-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.hourly { width: 100%; height: auto; margin: 8px 0 6px; overflow: visible; }
+.temp-line { fill: none; stroke: #f5a524; stroke-width: 2; stroke-linejoin: round; }
+.rain { fill: var(--link); opacity: .35; }
+.t-label, .h-label { font-size: 8px; text-anchor: middle; fill: var(--muted); }
+.t-label { fill: var(--fg); }
+
+/* A narrow screen cannot hold the grid: the cards stack and the page scrolls. */
+@media (max-width: 760px) {
+  .dashboard { height: auto; min-height: 100svh; }
+  .dash-grid { display: flex; flex-direction: column; }
+  /* One list in the order of the day: the time, then the weather, then the news. */
+  .dash-col { display: contents; }
+  .dash-clocks { order: 1; }
+  .dash-calendar { order: 2; }
+  .dash-weather { order: 3; }
+  .dash-news { order: 4; }
+  .dash-links { order: 5; }
+}
+
+.history-head { font-size: 1.3em; margin: 24px 0 0; }
+.tl-end { text-align: center; padding: 24px 0 8px; }
+
+/* ---- the timeline ------------------------------------------------------------ */
+.timeline { --rail: 104px; }
+.tl-month-head {
+  position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 0 8px;
+  background: var(--bg); box-shadow: 0 8px 8px -8px var(--bg); font-size: 1.05em;
+}
+.tl-month-head a { color: var(--fg); }
+.tl-days { list-style: none; margin: 0; padding: 0; position: relative; }
+.tl-days::before {
+  content: ""; position: absolute; top: 6px; bottom: 6px; left: calc(var(--rail) - 16px);
+  width: 2px; background: var(--line);
+}
+.tl-day { display: grid; grid-template-columns: var(--rail) 1fr; margin: 0 0 22px; }
+.tl-date {
+  position: sticky; top: 48px; align-self: start; display: flex; flex-direction: column;
+  padding-right: 28px; line-height: 1.3;
+}
+.tl-md { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-dot {
+  position: absolute; left: calc(var(--rail) - 21px); top: 4px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--bg); border: 2px solid var(--link);
+}
+.tl-body { min-width: 0; }
+.tl-body .people { margin-top: 6px; }
+.tl-body .summary {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* A phone: the date sits above its entries, the rail moves to the edge. */
+@media (max-width: 600px) {
+  .timeline { --rail: 22px; }
+  .tl-day { grid-template-columns: 1fr; padding-left: var(--rail); }
+  .tl-days::before { left: 5px; }
+  .tl-date { position: static; flex-direction: row; gap: 8px; padding: 0; }
+  .tl-dot { left: 0; }
+}
+
+/* ---- switching between the dashboard and the history -------------------- */
+/* The page that is leaving sinks back and fades; the one arriving comes up.
+   The scroll itself moves them; these add the depth. */
+.dashboard, .history-head, .timeline {
+  transition: transform .75s cubic-bezier(.2, .8, .2, 1), opacity .75s ease, filter .75s ease;
+}
+.on-history .dashboard { transform: scale(.94) translateY(-2%); opacity: .35; filter: blur(2px); }
+.on-today .history-head, .on-today .timeline { transform: translateY(48px); opacity: .4; }
+.history { min-height: 100svh; }
+.linklike { border: 0; background: none; padding: 0; font: inherit; color: var(--link); cursor: pointer; }
+
+.pager {
+  position: fixed; right: 18px; top: 50%; transform: translateY(-50%); z-index: 5;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.pager button {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-direction: row-reverse;
+  border: 0; background: none; padding: 0; cursor: pointer; color: var(--muted); font: inherit; font-size: .78em;
+}
+.pager-dot {
+  width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--muted);
+  transition: height .35s ease, background .35s ease, border-color .35s ease;
+}
+.pager button[aria-current="true"] { color: var(--fg); }
+.pager button[aria-current="true"] .pager-dot { height: 26px; background: var(--link); border-color: var(--link); }
+.pager-label { opacity: 0; transform: translateX(6px); transition: opacity .25s, transform .25s; }
+.pager:hover .pager-label, .pager button[aria-current="true"] .pager-label { opacity: 1; transform: none; }
+
+@media (max-width: 760px) {
+  .pager { display: none; }
+  .on-history .dashboard, .on-today .history-head, .on-today .timeline { transform: none; opacity: 1; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard, .history-head, .timeline, .pager-dot { transition: none; }
+}
