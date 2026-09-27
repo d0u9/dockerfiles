@@ -3,6 +3,8 @@
 # Pages and the bundled tool are the same for every architecture: build them
 # once, natively, not under emulation.
 FROM --platform=$BUILDPLATFORM node:24-alpine AS build
+# git for the tests of the archive step.
+RUN apk add --no-cache git
 WORKDIR /src
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY tool/package.json tool/

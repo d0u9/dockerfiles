@@ -62,8 +62,8 @@ beforeEach(() => {
   for (const u of ["alice", "bob"]) fs.writeFileSync(dir(`secrets/freshrss/${u}`), "pw\n");
   fs.writeFileSync(dir("secrets/deploy_key"), "");
   fs.writeFileSync(dir("bin/codex"), FAKE_CODEX, { mode: 0o755 });
-  spawnSync("git", ["init", "-q", "--bare", "-b", "main", dir("remote")]);
-  spawnSync("git", ["clone", "-q", dir("remote"), dir("data")], { stdio: "ignore" });
+  git(["init", "-q", "--bare", "-b", "main", dir("remote")]);
+  git(["clone", "-q", dir("remote"), dir("data")]);
   for (const k of ["config", "spool", "data", "web", "secrets"]) {
     process.env[`AI_DIGEST_${k.toUpperCase()}`] = dir(k);
   }
@@ -74,6 +74,13 @@ afterEach(() => {
   process.env = saved;
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+/** Runs git for the test setup, failing loudly: without git every later
+ * archive step would fail with a misleading message. */
+function git(args: string[]): void {
+  const r = spawnSync("git", args, { stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" });
+  if (r.status !== 0) throw new Error(`git ${args[0]} failed: ${r.error?.message ?? r.stderr}`);
+}
 
 test("IDs ignore tracking parameters, case, default port and fragment", () => {
   const a = articleId("https://News.Example:443/a?b=2&utm_source=x&a=1#frag");
