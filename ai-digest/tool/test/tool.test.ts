@@ -134,6 +134,11 @@ test("a daily run: pull, digest, archive, index", async () => {
   const month = read<Month>(dir(`web/data/months/${d.date.slice(0, 7)}.json`));
   assert.deepEqual(month.users, ["alice"]);
   assert.equal(month.days[0]!.digests.alice!.top, "Story 1");
+
+  // A digest deleted from the data repository leaves the site too.
+  fs.rmSync(path.join(dayDir(dir("data"), d.date), "alice.json"));
+  indexer.run(config);
+  assert.ok(!fs.existsSync(path.join(dayDir(dir("web/data/days"), d.date), "alice.json")));
 });
 
 test("the pull window continues from the previous digest, up to the cap", () => {

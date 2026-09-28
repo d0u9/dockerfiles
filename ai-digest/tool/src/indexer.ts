@@ -43,12 +43,28 @@ function buildMonth(config: Config, month: string, dates: string[]): Month {
   };
 }
 
-function copyDays(dates: string[]): void {
+/**
+ * Mirrors a month's days into the web root. Anything there that the data
+ * repository no longer has -- a day or a person's digest deleted or rerun
+ * away -- is removed, or the site would keep serving it.
+ */
+function copyDays(month: string, dates: string[]): void {
+  const days = path.join(dirs.web, "data", "days");
+  const monthDir = path.join(days, ...month.split("-"));
+  const keep = new Set(dates.map((date) => dayDir(days, date)));
+  for (const name of fs.existsSync(monthDir) ? fs.readdirSync(monthDir) : []) {
+    const stale = path.join(monthDir, name);
+    if (!keep.has(stale)) fs.rmSync(stale, { recursive: true, force: true });
+  }
   for (const date of dates) {
     const source = dayDir(dirs.data, date);
-    const target = dayDir(path.join(dirs.web, "data", "days"), date);
+    const target = dayDir(days, date);
     fs.mkdirSync(target, { recursive: true });
-    for (const name of fs.readdirSync(source).filter((n) => n.endsWith(".json"))) {
+    const names = fs.readdirSync(source).filter((n) => n.endsWith(".json"));
+    for (const name of fs.readdirSync(target)) {
+      if (!names.includes(name)) fs.rmSync(path.join(target, name), { force: true });
+    }
+    for (const name of names) {
       // Copy to a temporary name first: a browser never reads half a file.
       const tmp = path.join(target, `.${name}.tmp`);
       fs.copyFileSync(path.join(source, name), tmp);
@@ -74,7 +90,7 @@ export function run(config: Config, rebuildAll = false): void {
     const file = path.join(data, "months", `${month}.json`);
     let built = rebuild.has(month) ? null : readJson<Month>(file);
     if (!built) {
-      copyDays(byMonth.get(month)!);
+      copyDays(month, byMonth.get(month)!);
       built = buildMonth(config, month, byMonth.get(month)!);
       writeJson(file, built, undefined);
     }

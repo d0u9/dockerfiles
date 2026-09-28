@@ -107,7 +107,7 @@ docker run --rm \
   -v "$PWD/config:/config:ro" \
   -v "$PWD/spool:/spool" -v "$PWD/data:/data" -v "$PWD/web:/web" \
   -v "$PWD/codex:/codex" -v "$PWD/secrets:/secrets:ro" \
-  d0u9/ai-digest:0.1.0 pull --user alice
+  d0u9/ai-digest:0.1.1 pull --user alice
 ```
 
 ## Development
@@ -126,10 +126,10 @@ npm run dev -w web       # the website against that data
 ## Building
 
 ```sh
-./buildx.sh 0.1.0
+./buildx.sh 0.1.1
 ```
 
 builds both architectures and pushes them to Docker Hub as
-`d0u9/ai-digest:0.1.0` and `:latest`, after `docker login`. On an amd64 host
-the arm64 half runs under QEMU. Pushing a tag `ai-digest/v0.1.0` builds the
+`d0u9/ai-digest:0.1.1` and `:latest`, after `docker login`. On an amd64 host
+the arm64 half runs under QEMU. Pushing a tag `ai-digest/v0.1.1` builds the
 same image in GitHub Actions and pushes it to ghcr.io.
