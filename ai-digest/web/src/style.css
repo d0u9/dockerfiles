@@ -349,6 +349,19 @@ main:has(.reader) { max-width: 760px; padding-top: 28px; }
 .digest h2 { font-size: 20px; margin: 36px 0 6px; }
 .digest h2 .count { font-size: 13px; font-weight: 500; color: var(--faint); margin-left: 4px; }
 .d-section { scroll-margin-top: 56px; }
+/* Each section starts with a rule and a marked heading, so where one ends
+   and the next begins is plain even between two items in a similar voice. */
+.d-section + .d-section { margin-top: 48px; padding-top: 4px; border-top: 2px solid var(--line); }
+.d-section > h2 {
+  display: flex; align-items: center; gap: 10px; margin-top: 28px; font-size: 22px;
+}
+.d-section > h2::before {
+  content: ""; width: 5px; height: 1.05em; border-radius: 3px; background: var(--link);
+}
+.d-section > h2 .count {
+  margin-left: 0; padding: 1px 9px; border-radius: 999px; background: var(--hover);
+  font-size: 13px; line-height: 1.6; color: var(--muted);
+}
 .d-summary { margin: 0 0 8px; font-size: 15px; line-height: 1.7; color: var(--muted); }
 .picks-block .picks { font-size: 15px; }
 .picks-block .pick-title { font-size: 17px; }
