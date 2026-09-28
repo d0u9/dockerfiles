@@ -393,16 +393,29 @@ function useDetail(latitude: number, longitude: number): Detail | null {
   return details.get(key) ?? null;
 }
 
-/** Temperature as a line, the chance of rain as bars beneath it. */
+/**
+ * Temperature as a line, the chance of rain as bars beneath it. Drawn at the
+ * width it is given, in pixels, so the line spans the card at any zoom
+ * instead of a fixed shape shrinking into the middle of it.
+ */
 function HourlyChart({ hours }: { hours: Detail["hours"] }) {
-  const W = 300, H = 90, top = 14, bottom = 16;
+  const ref = useRef<SVGSVGElement>(null);
+  const [W, setW] = useState(300);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => { if (entry) setW(Math.max(120, entry.contentRect.width)); });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const H = 90, top = 14, bottom = 16, pad = 12;
   const temps = hours.map((h) => h.temperature);
   const lo = Math.min(...temps), hi = Math.max(...temps);
-  const x = (i: number) => (i / (hours.length - 1)) * W;
+  const x = (i: number) => pad + (i / (hours.length - 1)) * (W - 2 * pad);
   const y = (t: number) => top + (1 - (t - lo) / (hi - lo || 1)) * (H - top - bottom - 10);
   const line = hours.map((h, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(h.temperature).toFixed(1)}`).join("");
   return (
-    <svg className="hourly" viewBox={`0 -2 ${W} ${H + 2}`} role="img" aria-label="未来 24 小时气温和降水概率">
+    <svg ref={ref} className="hourly" viewBox={`0 -2 ${W} ${H + 2}`} role="img" aria-label="未来 24 小时气温和降水概率">
       {hours.map((h, i) => h.rain > 0 && (
         <rect key={h.time} className="rain" x={x(i) - 3} width="6" y={H - bottom - (h.rain / 100) * 26} height={(h.rain / 100) * 26} />
       ))}
