@@ -325,13 +325,25 @@ main:has(.reader) { max-width: 760px; padding-top: 28px; }
   margin: 0 0 16px; padding: 18px 22px; border-radius: var(--radius); background: var(--card);
   border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 17px; line-height: 1.85;
 }
-/* The sections, kept in reach while scrolling. */
+/* The sections, kept in reach while scrolling. Wrapped where there is room;
+   one swipeable row on a phone, where a mouse wheel is not the only way. */
 .toc {
-  position: sticky; top: 0; z-index: 3; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px;
   margin: 0 -16px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: saturate(1.8) blur(12px); -webkit-backdrop-filter: saturate(1.8) blur(12px);
 }
 .toc::-webkit-scrollbar { display: none; }
+@media (max-width: 640px) {
+  .toc { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .toc .chip { flex-shrink: 0; white-space: nowrap; }
+  /* Home and top stay put while the sections slide under them. */
+  .toc-fixed {
+    position: sticky; left: -16px; z-index: 1; flex-shrink: 0;
+    margin: -10px 0 -10px -16px; padding: 10px 8px 10px 16px; background: var(--bg);
+  }
+}
+.toc .toc-nav { font-weight: 600; }
+.toc-fixed { display: flex; gap: 8px; }
 .toc .chip[aria-current="true"] { background: var(--fg); color: var(--bg); }
 .toc .chip[aria-current="true"] .chip-count { color: inherit; opacity: .7; }
 .digest h2 { font-size: 20px; margin: 36px 0 6px; }

@@ -239,6 +239,10 @@ export function DigestBody({ d, open }: { d: Digest; open?: number }) {
 
       {d.sections.length > 1 && (
         <nav className="toc" aria-label="分组">
+          <span className="toc-fixed">
+            <Link className="chip toc-nav" to="">首页</Link>
+            <button type="button" className="chip toc-nav" onClick={() => scrollTo({ top: 0, behavior: "smooth" })}>↑ 顶部</button>
+          </span>
           {d.sections.map((s, i) => (
             <button key={s.title} className="chip" aria-current={i === current} onClick={() => go(i)}>
               {s.title}<span className="chip-count">{s.items.length}</span>
