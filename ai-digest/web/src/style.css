@@ -1,0 +1,473 @@
+/* ---- tokens -------------------------------------------------------------------
+   One type scale, one spacing step (4px) and one set of colours for every page.
+   Sizes: 12 caption, 13 meta, 15 interface text, 17 reading text, 20 section
+   heading, 28 page title; numbers read at a glance are larger. */
+:root {
+  --fg: #1d1d1f; --muted: #6e6e73; --faint: #8e8e93; --bg: #f5f5f7; --card: #fff; --line: #e5e5ea;
+  --link: #0a58ca; --accent-soft: #eaf1fd; --hover: #f0f0f3;
+  /* Red up, green down: the Chinese convention, for a page written in Chinese. */
+  --up: #d70015; --down: #1f8f3a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 1px 1px rgba(0, 0, 0, .02);
+  --radius: 14px;
+  --gap: 16px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #f2f2f7; --muted: #a1a1a6; --faint: #7c7c80; --bg: #000; --card: #1c1c1e; --line: #2c2c2e;
+    --link: #6ea8fe; --accent-soft: #16243a; --hover: #2c2c2e;
+    --up: #ff6961; --down: #30d158; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+h1 { font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; margin: 0 0 4px; }
+h2 { font-size: 20px; line-height: 1.3; font-weight: 600; margin: 32px 0 8px; }
+.muted { color: var(--muted); }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 20px; margin: 10px 0; box-shadow: var(--shadow);
+}
+ul { padding-left: 1.2em; }
+li { overflow-wrap: anywhere; }
+nav { margin-bottom: 16px; font-size: 13px; }
+a.card { display: block; color: inherit; }
+a.card:hover { text-decoration: none; border-color: var(--link); }
+.linklike { border: 0; background: none; padding: 0; font: inherit; color: var(--link); cursor: pointer; }
+
+/* A segmented control, for choosing whose digest to read. */
+.tabs { display: inline-flex; background: var(--hover); border-radius: 999px; padding: 3px; gap: 2px; }
+.tabs button, .tabs a {
+  border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500;
+  padding: 4px 14px; border-radius: 999px; cursor: pointer; text-decoration: none; line-height: 1.5;
+}
+.tabs button:hover, .tabs a:hover { color: var(--fg); }
+.tabs [aria-selected="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+  background: var(--hover); border: 0; color: var(--fg); font: inherit; font-size: 13px; line-height: 1.5;
+  white-space: nowrap; cursor: pointer;
+}
+a.chip:hover, button.chip:hover { background: var(--accent-soft); color: var(--link); text-decoration: none; }
+.chip-count { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* ---- lists of days and months ------------------------------------------------ */
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 8px; }
+.people .card { margin: 0; }
+.day p { margin: 6px 0 0; }
+.day .top { font-weight: 600; }
+.empty { opacity: .6; }
+.months { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.months .card { margin: 0; }
+
+.strip { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.strip span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.icon, .icon-sm { flex: none; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.icon { width: 28px; height: 28px; color: var(--muted); stroke-width: 1.6; }
+.icon-sm { width: 15px; height: 15px; stroke-width: 1.8; }
+
+/* ---- home: the dashboard, one screen high on a desktop --------------------- */
+main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-left: 32px; padding-right: 56px; }
+.dashboard { zoom: var(--z, 1); height: calc(100svh / var(--z, 1)); display: flex; flex-direction: column; gap: 16px; padding: 20px 0 12px; }
+.dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.dash-head h1 { margin: 0; }
+.dash-sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+/* Three columns weighted by what is read: the news gets the most room. */
+.dash-grid {
+  flex: 1; min-height: 0; display: grid; gap: var(--gap);
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 1fr);
+}
+.dash-col { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+.dash-card { margin: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; flex: 0 1 auto; }
+.dash-news, .dash-calendar, .dash-markets { flex-grow: 1; }
+/* Small cards keep their size; the big ones give way and scroll. */
+.dash-clocks, .dash-links { flex-shrink: 0; }
+/* The weather gives way to the calendar, down to the open place whole and a
+   row either side of it (FIT in home.tsx allows for both). */
+.dash-weather { flex: 0 1 auto; min-height: 380px; }
+/* What does not fit scrolls inside its card, without a bar: the bottom fades
+   out and a small button says more is below (Scroller in ui.tsx). */
+.scroller { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.scroller-body { position: relative; min-height: 0; overflow: auto; scrollbar-width: none; overscroll-behavior: contain; }
+.scroller-body::-webkit-scrollbar { display: none; }
+.scroller[data-more] > .scroller-body { mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }
+/* A card's head stays put while what is under it scrolls. */
+.scroller-body > .card-head:first-child {
+  position: sticky; top: 0; z-index: 2; margin-bottom: 0; padding-bottom: 12px; background: var(--card);
+}
+.scroller-more {
+  position: absolute; left: 50%; bottom: 2px; transform: translate(-50%, 4px); opacity: 0; pointer-events: none;
+  padding: 3px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--muted);
+  font: inherit; font-size: 12px; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / .08);
+  transition: opacity .2s, transform .2s;
+}
+.scroller[data-more] > .scroller-more { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.scroller-more:hover { color: var(--link); border-color: var(--link); }
+.dash-news { padding: 20px 24px 12px; overflow: hidden; }
+
+/* Every card starts the same way: a small label, an action on the right. */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+.card-head h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.card-action { font-size: 13px; font-weight: 500; white-space: nowrap; }
+.card-head > .muted { font-size: 12px; white-space: nowrap; }
+.dash-foot { text-align: center; font-size: 13px; margin: 0; }
+
+/* News: read top to bottom like a front page. */
+.news-scroll { margin: 0 -8px; }
+.news-scroll > .scroller-body { padding: 0 8px 20px; }
+.news-stats { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.news-stats strong { color: var(--fg); font-weight: 600; }
+.news-lead { margin: 0 0 20px; font-size: 16px; line-height: 1.75; }
+.news-label { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .04em; }
+.news-scroll section + section { margin-top: 20px; }
+
+/* The articles worth opening: the title, its source, then why, each on its own line. */
+.picks { list-style: none; margin: 0; padding: 0; counter-reset: pick; }
+.picks li {
+  counter-increment: pick; position: relative; display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 0 10px 32px; border-top: 1px solid var(--line);
+}
+.picks li:first-child { border-top: 0; padding-top: 2px; }
+.picks li::before {
+  content: counter(pick); position: absolute; left: 0; top: 12px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--link); font-size: 12px; font-weight: 600; line-height: 20px; text-align: center;
+}
+.picks li:first-child::before { top: 4px; }
+.pick-title { color: var(--fg); font-weight: 600; line-height: 1.45; }
+.pick-meta { font-size: 12px; color: var(--faint); }
+.pick-why { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+/* Clocks: a face like the system's, light by day and dark at night. */
+.clocks { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 8px; }
+.clock { margin: 0; text-align: center; }
+.clock-digits { font-size: 27px; font-weight: 500; letter-spacing: -.5px; text-anchor: middle; dominant-baseline: middle; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.clock-ampm { font-size: 11px; text-anchor: middle; fill: var(--ink); opacity: .55; }
+/* A two-way switch in a card's head. */
+.seg { display: inline-flex; padding: 2px; border: 0; border-radius: 7px; background: var(--hover); font: inherit; font-size: 11px; cursor: pointer; }
+.seg span { padding: 1px 7px; border-radius: 5px; color: var(--muted); }
+.seg span[aria-current] { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.clock figcaption { display: flex; flex-direction: column; line-height: 1.35; font-size: 13px; margin-top: 6px; }
+.clock figcaption strong { font-weight: 600; }
+.clock figcaption .muted { font-size: 12px; }
+.clock-face { width: 100%; max-width: 76px; aspect-ratio: 1; }
+.clock-face { --face: #fff; --ink: #1d1d1f; --edge: #d2d2d7; }
+.clock-face.night { --face: #1d1d1f; --ink: #f5f5f7; --edge: #3a3a3c; }
+.clock-dial { fill: var(--face); stroke: var(--edge); stroke-width: 1; }
+.tick { stroke: var(--ink); stroke-width: .5; opacity: .45; }
+.tick.hour { stroke-width: 1.1; opacity: .9; }
+.numeral { fill: var(--ink); font-size: 11px; font-weight: 500; text-anchor: middle; dominant-baseline: central; }
+.hand, .hand-neck { stroke: var(--ink); stroke-linecap: round; }
+.hand { stroke-width: 3.4; }
+.hand-neck { stroke-width: 1.4; }
+.pin { fill: var(--face); stroke: var(--ink); stroke-width: 1.4; }
+
+/* Calendar. */
+.cal-term { color: var(--link); margin-left: 4px; }
+.link-list { list-style: none; margin: 0; padding: 0; }
+.link-list li { margin: 0; padding: 8px 0; border-top: 1px solid var(--line); }
+.link-list li:first-child { border-top: 0; }
+.cal-holidays { margin-top: 10px; font-size: 14px; }
+.cal-holidays li { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.cal-holidays li > :nth-child(2) { min-width: 5em; }
+.cal-holidays li > .muted:first-child { flex: none; font-size: 12px; }
+.cal-when { margin-left: auto; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
+.cal-today { font-weight: 600; }
+/* The month, as Apple's calendar draws it. */
+.cal-month-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 4px; font-size: 15px; }
+.cal-nav { display: flex; gap: 2px; }
+.cal-nav button {
+  min-width: 28px; height: 26px; padding: 0 8px; border: 0; border-radius: 7px; background: none;
+  color: var(--link); font: inherit; font-size: 13px; cursor: pointer;
+}
+.cal-nav button:first-child, .cal-nav button:last-child { font-size: 18px; line-height: 1; }
+.cal-nav button:hover:not(:disabled) { background: var(--hover); }
+.cal-nav button:disabled { color: var(--faint); cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.cal-wd { text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 4px; }
+.cal-day {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 2px 0; border: 0; border-radius: 10px; background: none; color: var(--fg); font: inherit; cursor: pointer;
+}
+.cal-day:hover { background: var(--hover); }
+.cal-num {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.cal-sub { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; font-size: 10px; color: var(--muted); }
+.cal-marked .cal-sub { color: var(--up); }
+.cal-weekend .cal-num { color: var(--muted); }
+.cal-out { opacity: .35; }
+.cal-day.is-selected { background: var(--accent-soft); }
+.cal-day.is-today .cal-num { background: var(--up); color: #fff; }
+.cal-badge {
+  position: absolute; top: 1px; right: 2px; font-size: 9px; font-weight: 600; line-height: 1; color: var(--down);
+}
+.cal-badge.work { color: var(--up); }
+.cal-badge.inline {
+  position: static; margin-left: 6px; padding: 1px 4px; border-radius: 4px; font-size: 11px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.cal-detail { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--hover); font-size: 13px; display: grid; gap: 3px; }
+
+/* A weekend worked in exchange for a holiday (调休). */
+.cal-holidays li > .cal-work { min-width: 0; }
+.cal-work { margin-left: 6px; padding: 0 4px; border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--up); background: color-mix(in srgb, var(--up) 12%, transparent); }
+
+/* Weather: here in detail, the other places one row each. */
+.wx-here { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wx-now > .muted { font-size: 13px; }
+.wx-big { display: flex; align-items: center; gap: 8px; }
+.wx-big span { font-size: 44px; font-weight: 300; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.wx-facts { margin: 0; display: grid; grid-template-columns: auto auto; gap: 4px 16px; font-size: 13px; align-content: center; }
+.wx-facts div { display: contents; }
+.wx-facts dt { color: var(--muted); }
+.wx-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+.hourly { display: block; width: 100%; height: 92px; margin: 8px 0 6px; overflow: visible; }
+.hourly-empty { height: 92px; }
+.temp-line { fill: none; stroke: #f5a524; stroke-width: 2; stroke-linejoin: round; }
+.rain { fill: var(--link); opacity: .35; }
+.t-label, .h-label { font-size: 10px; text-anchor: middle; fill: var(--muted); }
+.t-label { fill: var(--fg); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+td, th { padding: 6px 4px; text-align: left; font-weight: 400; white-space: nowrap; }
+tbody tr + tr td { border-top: 1px solid var(--line); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.wx-list { list-style: none; margin: 0; padding: 0; }
+.wx-list > li + li { border-top: 1px solid var(--line); }
+.wx-open { padding-bottom: 4px; }
+.wx-list > li + .wx-open { padding-top: 12px; }
+.wx-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 20px auto 5.5em; align-items: center; gap: 8px;
+  width: 100%; padding: 8px 4px; border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.wx-row:hover { background: var(--hover); }
+.wx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Markets: the name, a month's trend, the value, the day's change. */
+.mk-group + .mk-group { margin-top: 14px; }
+.mk-group h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+.mk-group h3 .muted { font-weight: 400; font-size: 12px; margin-left: 4px; }
+.mk-list { list-style: none; margin: 0; padding: 0; }
+.mk-item { display: flex; align-items: center; gap: 2px; }
+.mk-item > .mk-row { flex: 1; min-width: 0; }
+.mk-swap {
+  flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; padding: 0;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted); cursor: pointer;
+}
+.mk-swap svg { width: 12px; height: 12px; }
+.mk-swap:hover { border-color: var(--link); color: var(--link); background: var(--accent-soft); }
+.mk-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 56px auto 64px; align-items: center; gap: 10px;
+  padding: 7px 4px; margin: 0 -4px; border-radius: 8px; color: inherit;
+}
+.mk-list li + li { border-top: 1px solid var(--line); }
+a.mk-row:hover { background: var(--hover); text-decoration: none; }
+.mk-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk-value { font-size: 15px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+.mk-change {
+  justify-self: end; min-width: 60px; padding: 1px 6px; border-radius: 6px; text-align: right;
+  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); background: var(--hover);
+}
+.mk-change.up { color: #fff; background: var(--up); }
+.mk-change.down { color: #fff; background: var(--down); }
+.spark { width: 56px; height: 22px; }
+/* The month's line stays neutral: its colour would contradict the day's
+   change whenever the two point different ways. */
+.spark polyline { fill: none; stroke: var(--faint); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+
+.link-group + .link-group { margin-top: 12px; }
+.link-group h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* A laptop that is short or narrow: two columns, and the page scrolls. */
+@media (max-width: 1100px), (max-height: 680px) {
+  .dashboard { height: auto; min-height: 100svh; }
+  .dash-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
+  .dash-col:first-child { grid-row: span 2; }
+  .dash-col:nth-child(3) { grid-column: 2; }
+  .dash-card, .dash-news { overflow: visible; }
+  .dash-weather { flex: none; min-height: 0; }
+  .scroller-body { overflow: visible; }
+}
+/* A phone: one list in the order of the day -- the time, the weather, then
+   the news and the markets. */
+@media (max-width: 760px) {
+  main:has(.dashboard) { padding-left: 16px; padding-right: 16px; }
+  .dash-grid { display: flex; flex-direction: column; align-items: stretch; }
+  .dash-col { display: contents; }
+  .dash-clocks { order: 1; }
+  .dash-calendar { order: 2; }
+  .dash-weather { order: 3; }
+  .dash-news { order: 4; padding: 16px 20px; }
+  .dash-markets { order: 5; }
+  .dash-links { order: 6; }
+  .dash-head { align-items: flex-start; flex-direction: column; }
+}
+
+/* ---- one digest, laid out for reading ------------------------------------- */
+main:has(.reader) { max-width: 800px; padding-top: 28px; }
+.reader-head { margin-bottom: 24px; }
+.reader-head h1 .muted { font-weight: 400; font-size: 20px; margin-left: 4px; }
+.reader-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 12px 0 10px; font-size: 13px; }
+.reader-head .strip { color: var(--muted); }
+.digest { font-size: 17px; line-height: 1.8; }
+.lead {
+  margin: 0 0 16px; padding: 18px 24px 20px; border-radius: var(--radius); background: var(--card);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+  font-size: 16px; line-height: 1.75;
+}
+.lead .lead-label {
+  margin: 0 0 10px; font-size: 13px; font-weight: 600; letter-spacing: .08em; color: var(--link);
+}
+.lead p { margin: 0; max-width: 42em; text-wrap: pretty; }
+.lead p + p { margin-top: 8px; }
+/* The first sentence is the day's headline. */
+.lead p:first-of-type { font-size: 17px; font-weight: 600; color: var(--fg); }
+/* The sections, kept in reach while scrolling. Wrapped where there is room;
+   one swipeable row on a phone, where a mouse wheel is not the only way. */
+.toc {
+  position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 0 -16px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(1.8) blur(12px); -webkit-backdrop-filter: saturate(1.8) blur(12px);
+}
+.toc::-webkit-scrollbar { display: none; }
+@media (max-width: 640px) {
+  .toc { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .toc .chip { flex-shrink: 0; white-space: nowrap; }
+  /* Home and top stay put while the sections slide under them. */
+  .toc-fixed {
+    position: sticky; left: -16px; z-index: 1; flex-shrink: 0;
+    margin: -10px 0 -10px -16px; padding: 10px 8px 10px 16px; background: var(--bg);
+  }
+}
+.toc .toc-nav { font-weight: 600; }
+.toc-fixed { display: flex; gap: 8px; }
+.toc .chip[aria-current="true"] { background: var(--fg); color: var(--bg); }
+.toc .chip[aria-current="true"] .chip-count { color: inherit; opacity: .7; }
+.digest h2 { font-size: 20px; margin: 36px 0 6px; }
+.digest h2 .count { font-size: 13px; font-weight: 500; color: var(--faint); margin-left: 4px; }
+.d-section { scroll-margin-top: 56px; }
+/* Each section starts with a rule and a marked heading, so where one ends
+   and the next begins is plain even between two items in a similar voice. */
+.d-section + .d-section { margin-top: 48px; padding-top: 4px; border-top: 2px solid var(--line); }
+.d-section > h2 {
+  display: flex; align-items: center; gap: 10px; margin-top: 28px; font-size: 22px;
+}
+.d-section > h2::before {
+  content: ""; width: 5px; height: 1.05em; border-radius: 3px; background: var(--link);
+}
+.d-section > h2 .count {
+  margin-left: 0; padding: 1px 9px; border-radius: 999px; background: var(--hover);
+  font-size: 13px; line-height: 1.6; color: var(--muted);
+}
+.d-summary { margin: 0 0 8px; font-size: 15px; line-height: 1.7; color: var(--muted); }
+.picks-block .picks { font-size: 15px; }
+.picks-block .pick-title { font-size: 17px; }
+.picks-block .pick-why { font-size: 15px; }
+.items { list-style: none; margin: 0; padding: 0; }
+.items li { padding: 14px 0; border-top: 1px solid var(--line); }
+.items li:first-child { border-top: 0; }
+.item-title { font-weight: 600; line-height: 1.5; color: var(--fg); }
+a.item-title:hover, a.pick-title:hover { color: var(--link); }
+.ext { font-size: .7em; margin-left: 4px; color: var(--faint); font-weight: 400; }
+.item-meta { display: block; font-size: 12px; line-height: 1.6; color: var(--faint); margin-top: 2px; }
+.item-note { margin: 4px 0 0; font-size: 16px; line-height: 1.75; }
+.day-pager {
+  display: flex; justify-content: space-between; gap: 16px; margin: 40px 0 0; padding-top: 16px;
+  border-top: 1px solid var(--line); font-size: 14px;
+}
+@media (max-width: 600px) {
+  .digest { font-size: 16px; }
+  .lead { padding: 14px 16px 16px; font-size: 15px; }
+  .lead p:first-of-type { font-size: 16px; }
+  .item-note { font-size: 15px; }
+}
+
+/* ---- the history on the home page ------------------------------------------ */
+.history-head { font-size: 22px; margin: 24px 0 0; }
+.tl-end { text-align: center; padding: 24px 0 8px; font-size: 13px; }
+.timeline { --rail: 104px; }
+.tl-month-head {
+  position: sticky; top: 0; z-index: 2; margin: 0; padding: 12px 0 8px;
+  background: var(--bg); box-shadow: 0 8px 8px -8px var(--bg); font-size: 17px;
+}
+.tl-month-head a { color: var(--fg); }
+.tl-days { list-style: none; margin: 0; padding: 0; position: relative; }
+.tl-days::before {
+  content: ""; position: absolute; top: 6px; bottom: 6px; left: calc(var(--rail) - 16px);
+  width: 2px; background: var(--line);
+}
+.tl-day { display: grid; grid-template-columns: var(--rail) 1fr; margin: 0 0 22px; }
+.tl-date {
+  position: sticky; top: 48px; align-self: start; display: flex; flex-direction: column;
+  padding-right: 28px; line-height: 1.3; font-size: 13px;
+}
+.tl-md { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+.tl-dot {
+  position: absolute; left: calc(var(--rail) - 21px); top: 4px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--bg); border: 2px solid var(--link);
+}
+.tl-body { min-width: 0; }
+.tl-body .people { margin-top: 6px; }
+.tl-body .summary {
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.7;
+}
+@media (max-width: 600px) {
+  .timeline { --rail: 22px; }
+  .tl-day { grid-template-columns: 1fr; padding-left: var(--rail); }
+  .tl-days::before { left: 5px; }
+  .tl-date { position: static; flex-direction: row; gap: 8px; padding: 0; }
+  .tl-dot { left: 0; }
+}
+
+/* ---- switching between the dashboard and the history -------------------- */
+/* The page that is leaving sinks back and fades; the one arriving comes up.
+   The scroll itself moves them; these add the depth. */
+.dashboard, .history-head, .timeline {
+  transition: transform .75s cubic-bezier(.2, .8, .2, 1), opacity .75s ease, filter .75s ease;
+}
+.on-history .dashboard { transform: scale(.94) translateY(-2%); opacity: .35; filter: blur(2px); }
+.on-today .history-head, .on-today .timeline { transform: translateY(48px); opacity: .4; }
+.history { min-height: 100svh; }
+
+.pager {
+  position: fixed; right: 18px; top: 50%; transform: translateY(-50%); z-index: 5;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.pager button {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-direction: row-reverse;
+  border: 0; background: none; padding: 0; cursor: pointer; color: var(--muted); font: inherit; font-size: 12px;
+}
+.pager-dot {
+  width: 10px; height: 10px; border-radius: 999px; border: 2px solid var(--muted);
+  transition: height .35s ease, background .35s ease, border-color .35s ease;
+}
+.pager button[aria-current="true"] { color: var(--fg); }
+.pager button[aria-current="true"] .pager-dot { height: 26px; background: var(--link); border-color: var(--link); }
+/* Labels show on hover only, on their own background: the page's right
+   padding reserves room for the dots, not for the labels over the cards. */
+.pager-label {
+  opacity: 0; transform: translateX(6px); transition: opacity .25s, transform .25s;
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
+}
+.pager:hover .pager-label, .pager button:focus-visible .pager-label { opacity: 1; transform: none; }
+
+/* Where the dashboard scrolls (SCROLLING in home.tsx), the page switch would
+   fight the reader. */
+@media (max-width: 1100px), (max-height: 680px) {
+  .pager { display: none; }
+  .on-history .dashboard, .on-today .history-head, .on-today .timeline { transform: none; opacity: 1; filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard, .history-head, .timeline, .pager-dot { transition: none; }
+}
