@@ -10,6 +10,12 @@ import { Timeline } from "./timeline.tsx";
 import { Link, Nav, Show } from "./ui.tsx";
 import { WeatherStrip } from "./weather.tsx";
 
+/** A summary as its sentences, one paragraph each: a block of run-on text is
+ *  hard to take in at a glance. */
+function sentences(text: string): string[] {
+  return text.split(/(?<=[。！？!?])\s*/).map((t) => t.trim()).filter(Boolean);
+}
+
 // ---- months ------------------------------------------------------------------------
 
 function MonthNav({ month, prefix, index }: { month: string; prefix: string; index: SiteIndex | null }) {
@@ -235,7 +241,10 @@ export function DigestBody({ d, open }: { d: Digest; open?: number }) {
   }, [d]);
   return (
     <article className="digest">
-      <p className="lead">{d.summary}</p>
+      <section className="lead" aria-label="今日概要">
+        <h2 className="lead-label">今日概要</h2>
+        {sentences(d.summary).map((line, i) => <p key={i}>{line}</p>)}
+      </section>
 
       {d.sections.length > 1 && (
         <nav className="toc" aria-label="分组">
