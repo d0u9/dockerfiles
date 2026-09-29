@@ -115,48 +115,57 @@ function flip(r: Rate): Rate {
   };
 }
 
-export function MarketsCard({ config, saved }: { config: MarketsConfig; saved: Markets | null }) {
+/** The exchange rates, each of which the reader may turn round. */
+export function RatesCard({ config, saved }: { config: MarketsConfig["rates"]; saved: Markets | null }) {
   // The day's snapshot has everyone's; keep what this dashboard lists, in its order.
-  const savedRates = config.rates.flatMap((c) => saved?.rates.filter((r) => r.base === c.base && r.quote === c.quote) ?? []);
-  const { rates, live } = useLiveRates(config.rates, savedRates);
-  const quotes = config.quotes.flatMap((c) => saved?.quotes.filter((q) => q.symbol === c.symbol) ?? []);
+  const savedRates = config.flatMap((c) => saved?.rates.filter((r) => r.base === c.base && r.quote === c.quote) ?? []);
+  const { rates, live } = useLiveRates(config, savedRates);
   const [flipped, toggle] = useFlipped();
   const rateDate = rates[0]?.as_of;
   return (
     <>
-      <div className="card-head"><h2>市场</h2></div>
-      {rates.length > 0 && (
-        <section className="mk-group">
-          <h3>汇率 <span className="muted">{live ? "欧洲央行参考价" : "保存的"} · {rateDate && md(rateDate)}</span></h3>
-          <ul className="mk-list">
-            {rates.map((saved) => {
-              const pair = `${saved.base}${saved.quote}`;
-              const r = flipped.has(pair) ? flip(saved) : saved;
-              return (
-                <Row key={pair} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
-                  previous={previous(r.history, r.as_of)} history={r.history}
-                  lead={<button type="button" className="mk-swap" onClick={() => toggle(pair)}
-                    title={`换成 ${r.quote}/${r.base}`} aria-label={`换成 ${r.quote}/${r.base}`}>
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3" />
-                    </svg>
-                  </button>} />
-              );
-            })}
-          </ul>
-        </section>
-      )}
-      {quotes.length > 0 && (
-        <section className="mk-group">
-          <h3>股市 <span className="muted">截至 {md(saved!.fetched_at)} {saved!.fetched_at.slice(11, 16)}</span></h3>
-          <ul className="mk-list">
-            {quotes.map((q) => (
-              <Row key={q.symbol} name={q.name} symbol={q.symbol} value={q.value} previous={q.previous_close} history={q.history} />
-            ))}
-          </ul>
-        </section>
-      )}
-      {!rates.length && !quotes.length && <p className="muted">还没有数据。</p>}
+      <div className="card-head">
+        <h2>汇率</h2>
+        {rateDate && <span className="muted">{live ? "欧洲央行参考价" : "保存的"} · {md(rateDate)}</span>}
+      </div>
+      {rates.length > 0 ? (
+        <ul className="mk-list">
+          {rates.map((saved) => {
+            const pair = `${saved.base}${saved.quote}`;
+            const r = flipped.has(pair) ? flip(saved) : saved;
+            return (
+              <Row key={pair} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
+                previous={previous(r.history, r.as_of)} history={r.history}
+                lead={<button type="button" className="mk-swap" onClick={() => toggle(pair)}
+                  title={`换成 ${r.quote}/${r.base}`} aria-label={`换成 ${r.quote}/${r.base}`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3" />
+                  </svg>
+                </button>} />
+            );
+          })}
+        </ul>
+      ) : <p className="muted">还没有数据。</p>}
+    </>
+  );
+}
+
+/** The quotes, as saved, in the order the configuration lists them. */
+export function QuotesCard({ config, saved }: { config: MarketsConfig["quotes"]; saved: Markets | null }) {
+  const quotes = config.flatMap((c) => saved?.quotes.filter((q) => q.symbol === c.symbol) ?? []);
+  return (
+    <>
+      <div className="card-head">
+        <h2>股市</h2>
+        {saved && quotes.length > 0 && <span className="muted">截至 {md(saved.fetched_at)} {saved.fetched_at.slice(11, 16)}</span>}
+      </div>
+      {quotes.length > 0 ? (
+        <ul className="mk-list">
+          {quotes.map((q) => (
+            <Row key={q.symbol} name={q.name} symbol={q.symbol} value={q.value} previous={q.previous_close} history={q.history} />
+          ))}
+        </ul>
+      ) : <p className="muted">还没有数据。</p>}
     </>
   );
 }

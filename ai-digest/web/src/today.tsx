@@ -5,6 +5,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Clock, HolidayRegion, Weather } from "../../shared/types.ts";
 import { SkyIcon, sky, useLiveWeather } from "./weather.tsx";
+import { Fold } from "./ui.tsx";
 
 /** The current time, updated at the start of every minute. */
 function useMinute(): Date {
@@ -292,8 +293,23 @@ export function CalendarCard({ regions }: { regions: HolidayRegion[] }) {
   const upcoming = (holidays ?? []).filter((h) => (h.until ?? h.date) >= today)
     .filter((h, i, all) => all.slice(0, i).filter((o) => o.region === h.region).length < 2)
     .slice(0, 4);
+  const lunarToday = lunarParts(localDate(today));
+  const next = upcoming.find((h) => h.date > today);
+  const summary = (
+    <span className="fold-cal">
+      <span className="fold-day" aria-hidden="true">{Number(today.slice(8))}</span>
+      <span className="fold-lines">
+        <strong>{md(today)} 周{WEEK[(localDate(today).getDay() + 6) % 7]}</strong>
+        <span className="muted">
+          农历{lunarToday.month}{lunarToday.day}
+          {termOn.has(today) ? ` · ${termOn.get(today)}` : ` · ${term.name} ${inDays(daysUntil(today, term.date))}`}
+          {next && ` · ${next.name} ${inDays(daysUntil(today, next.date))}`}
+        </span>
+      </span>
+    </span>
+  );
   return (
-    <>
+    <Fold title="日历" summary={summary}>
       <div className="card-head"><h2>日历</h2></div>
       <div className="cal-month-head">
         <strong>{Number(month.slice(0, 4))}年{Number(month.slice(5))}月</strong>
@@ -336,7 +352,7 @@ export function CalendarCard({ regions }: { regions: HolidayRegion[] }) {
           ))}
         </ul>
       )}
-    </>
+    </Fold>
   );
 }
 
@@ -468,8 +484,20 @@ export function WeatherCard({ saved }: { saved: Weather }) {
     else if (bottom > box.scrollTop + box.clientHeight) box.scrollTop = Math.min(top, bottom - box.clientHeight);
   }, [open, detail]);
   const r = (n: number) => Math.round(n);
+  const first = weather.places[0]!;
+  const summary = (
+    <span className="fold-wx">
+      <SkyIcon code={first.now.code} />
+      <span className="fold-temp">{r(first.now.temperature)}°</span>
+      <span className="fold-lines">
+        <strong>{first.name}</strong>
+        <span className="muted">{sky(first.now.code).text} · {r(first.today.min)}–{r(first.today.max)}°</span>
+      </span>
+      {weather.places.length > 1 && <span className="fold-more muted">另 {weather.places.length - 1} 地</span>}
+    </span>
+  );
   return (
-    <>
+    <Fold title="天气" summary={summary}>
       <div className="card-head"><h2>天气</h2><span className="muted">{live ? "现在" : `${saved.fetched_at.slice(11, 16)} 保存`}</span></div>
       <ul className="wx-list" ref={list}>
         {weather.places.map((p, i) => i === open ? (
@@ -500,6 +528,6 @@ export function WeatherCard({ saved }: { saved: Weather }) {
           </li>
         ))}
       </ul>
-    </>
+    </Fold>
   );
 }

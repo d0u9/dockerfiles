@@ -90,9 +90,9 @@ main:has(.dashboard) { padding-top: 0; max-width: min(1480px, 100%); padding-lef
 }
 .dash-col { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
 .dash-card { margin: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; flex: 0 1 auto; }
-.dash-news, .dash-calendar, .dash-markets { flex-grow: 1; }
+.dash-news, .dash-calendar, .dash-quotes { flex-grow: 1; }
 /* Small cards keep their size; the big ones give way and scroll. */
-.dash-clocks, .dash-links { flex-shrink: 0; }
+.dash-clocks, .dash-rates, .dash-links { flex-shrink: 0; }
 /* The weather gives way to the calendar, down to the open place whole and a
    row either side of it (FIT in home.tsx allows for both). */
 .dash-weather { flex: 0 1 auto; min-height: 380px; }
@@ -255,9 +255,6 @@ tbody tr + tr td { border-top: 1px solid var(--line); }
 .wx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Markets: the name, a month's trend, the value, the day's change. */
-.mk-group + .mk-group { margin-top: 14px; }
-.mk-group h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
-.mk-group h3 .muted { font-weight: 400; font-size: 12px; margin-left: 4px; }
 .mk-list { list-style: none; margin: 0; padding: 0; }
 .mk-item { display: flex; align-items: center; gap: 2px; }
 .mk-item > .mk-row { flex: 1; min-width: 0; }
@@ -287,6 +284,43 @@ a.mk-row:hover { background: var(--hover); text-decoration: none; }
 .spark polyline { fill: none; stroke: var(--faint); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 
 .link-group + .link-group { margin-top: 12px; }
+/* A card folded on a phone (Fold in ui.tsx): its head and one line, the
+   whole card a button. */
+.fold {
+  display: block; width: 100%; margin: 0; padding: 0;
+  border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.dash-card:has(> .scroller .fold):active { background: var(--hover); }
+.fold .card-head { margin-bottom: 10px; }
+.fold-chevron { width: 16px; height: 16px; color: var(--faint); flex: none; }
+.fold-summary { display: block; }
+.fold-cal, .fold-wx { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.fold-lines { display: flex; flex-direction: column; min-width: 0; font-size: 14px; line-height: 1.4; }
+.fold-lines > .muted { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fold-day {
+  flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--up); color: #fff; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.fold-wx .icon { flex: none; width: 32px; height: 32px; }
+.fold-temp { font-size: 30px; font-weight: 300; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.fold-more { margin-left: auto; font-size: 12px; white-space: nowrap; }
+.fold-close {
+  display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; margin-top: 10px; padding: 6px;
+  border: 0; border-top: 1px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer;
+}
+/* Open, the head shows it folds: the chevron where the folded card had it,
+   now pointing up. */
+.fold-open { display: contents; }
+.fold-open > .card-head { cursor: pointer; justify-content: flex-start; }
+.fold-open > .card-head h2 { margin-right: auto; }
+.fold-open > .card-head::after {
+  content: ""; flex: none; width: 16px; height: 16px;
+  background: var(--faint);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10l4-4 4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10l4-4 4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.fold-close .fold-chevron { width: 12px; height: 12px; color: inherit; }
+
 .link-group h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
 
 /* A laptop that is short or narrow: two columns, and the page scrolls. */
@@ -299,8 +333,8 @@ a.mk-row:hover { background: var(--hover); text-decoration: none; }
   .dash-weather { flex: none; min-height: 0; }
   .scroller-body { overflow: visible; }
 }
-/* A phone: one list in the order of the day -- the time, the weather, then
-   the news and the markets. */
+/* A phone: one list in the order of the day -- the time, the calendar and
+   the weather folded to a line each, the markets, then the news. */
 @media (max-width: 760px) {
   main:has(.dashboard) { padding-left: 16px; padding-right: 16px; }
   .dash-grid { display: flex; flex-direction: column; align-items: stretch; }
@@ -308,9 +342,10 @@ a.mk-row:hover { background: var(--hover); text-decoration: none; }
   .dash-clocks { order: 1; }
   .dash-calendar { order: 2; }
   .dash-weather { order: 3; }
-  .dash-news { order: 4; padding: 16px 20px; }
-  .dash-markets { order: 5; }
-  .dash-links { order: 6; }
+  .dash-rates { order: 4; }
+  .dash-quotes { order: 5; }
+  .dash-news { order: 6; padding: 16px 20px; }
+  .dash-links { order: 7; }
   .dash-head { align-items: flex-start; flex-direction: column; }
 }
 
