@@ -142,6 +142,7 @@ const config: Config = {
     { name: "Here", timezone: "UTC" },
     { name: "East", timezone: "Asia/Tokyo" },
     { name: "West", timezone: "America/New_York" },
+    { name: "纽约", timezone: "America/New_York" },
   ],
   holidays: [{ name: "Example", country: "AU", region: "AU-NSW" }, { name: "Sample", country: "CN" }],
   // Real currency codes, so the browser's live rates can be tried; made-up

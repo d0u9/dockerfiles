@@ -96,6 +96,8 @@ export interface Markets {
     value: number;
     previous_close: number | null;
     history: Series;
+    /** The regular session of the day the quote is from, when Yahoo gives it. */
+    session?: { start: string; end: string };
   }[];
 }
 

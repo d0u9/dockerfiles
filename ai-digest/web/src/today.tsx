@@ -75,15 +75,15 @@ function Digits({ hour, minute }: { hour: number; minute: number }) {
 }
 
 /** Offset of a time zone from this browser's, as "+3 小时", "明天 +3 小时" or "本地". */
-function relative(at: Date, timeZone: string): string {
+function relative(at: Date, timeZone: string): string[] {
   const here = wall(at, Intl.DateTimeFormat().resolvedOptions().timeZone);
   const there = wall(at, timeZone);
   const minutes = (Date.parse(`${there.date}T00:00Z`) - Date.parse(`${here.date}T00:00Z`)) / 60_000
     + (there.hour - here.hour) * 60 + (there.minute - here.minute);
-  const day = there.date === here.date ? "" : there.date > here.date ? "明天 " : "昨天 ";
-  if (!minutes) return "本地";
+  const day = there.date === here.date ? [] : [there.date > here.date ? "明天" : "昨天"];
+  if (!minutes) return ["本地"];
   const h = minutes / 60;
-  return `${day}${h > 0 ? "+" : "−"}${Math.abs(h)} 小时`;
+  return [...day, `${h > 0 ? "+" : "−"}${Math.abs(h)} 小时`];
 }
 
 /** Hands or digits, remembered in this browser only. */
@@ -98,6 +98,23 @@ export function Clocks({ clocks }: { clocks: Clock[] }) {
     setDigital(!digital);
     try { localStorage.setItem(CLOCK_STYLE, digital ? "analog" : "digital"); } catch { /* storage blocked */ }
   };
+  // On a phone more clocks than fit scroll sideways in one row; an edge with
+  // more beyond it fades out.
+  const row = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  useEffect(() => {
+    const el = row.current;
+    if (!el) return;
+    // A few pixels' slack: snapping and fractional widths leave the end a
+    // pixel or two short, which is not more to see.
+    const check = () => setEdges({ left: el.scrollLeft > 6, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 6 });
+    check();
+    el.addEventListener("scroll", check, { passive: true });
+    el.addEventListener("scrollend", check);
+    const resize = new ResizeObserver(check);
+    resize.observe(el);
+    return () => { el.removeEventListener("scroll", check); el.removeEventListener("scrollend", check); resize.disconnect(); };
+  }, []);
   return (
     <>
       <div className="card-head">
@@ -106,7 +123,7 @@ export function Clocks({ clocks }: { clocks: Clock[] }) {
           <span aria-current={!digital || undefined}>指针</span><span aria-current={digital || undefined}>数字</span>
         </button>
       </div>
-      <div className="clocks">
+      <div className="clocks" ref={row} data-left={edges.left || undefined} data-right={edges.right || undefined}>
         {clocks.map((c) => {
           const w = wall(now, c.timezone);
           return (
@@ -114,7 +131,8 @@ export function Clocks({ clocks }: { clocks: Clock[] }) {
               {digital ? <Digits hour={w.hour} minute={w.minute} /> : <Face hour={w.hour} minute={w.minute} />}
               <figcaption>
                 <strong>{c.name}</strong>
-                <span className="muted">{relative(now, c.timezone)}</span>
+                {/* Each part whole: a narrow clock breaks between the day and the hours. */}
+                <span className="muted clock-offset">{relative(now, c.timezone).map((part) => <span key={part}>{part}</span>)}</span>
               </figcaption>
             </figure>
           );
