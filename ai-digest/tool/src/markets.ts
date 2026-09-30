@@ -10,6 +10,7 @@
 // out, and a failure never stops the digest.
 
 import type { Markets, MarketsConfig, Series } from "../../shared/types.ts";
+import { type YahooChart, chartPath, readChart } from "../../shared/yahoo.ts";
 import { type Moment, log } from "./common.ts";
 
 const DAYS = 35;
@@ -58,41 +59,10 @@ async function fetchRates(rates: MarketsConfig["rates"], moment: Moment): Promis
   return out;
 }
 
-interface YahooChart {
-  chart: {
-    result: {
-      meta: { currency?: string; regularMarketPrice?: number; regularMarketTime?: number; exchangeTimezoneName?: string };
-      timestamp?: number[];
-      indicators: { quote: { close: (number | null)[] }[] };
-    }[] | null;
-  };
-}
-
 async function fetchQuote(item: MarketsConfig["quotes"][number]): Promise<Markets["quotes"][number] | null> {
   try {
-    const body = await getJson<YahooChart>(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.symbol)}?range=1mo&interval=1d`);
-    const result = body.chart.result?.[0];
-    if (!result) throw new Error("no result");
-    const { meta } = result;
-    const tz = meta.exchangeTimezoneName ?? "UTC";
-    const day = (s: number) => new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(s * 1000));
-    const closes = result.indicators.quote[0]?.close ?? [];
-    const history: Series = (result.timestamp ?? []).flatMap((t, i) => {
-      const value = closes[i];
-      return typeof value === "number" ? [{ date: day(t), value }] : [];
-    });
-    const value = meta.regularMarketPrice ?? history.at(-1)?.value;
-    if (value === undefined) throw new Error("no price");
-    const time = meta.regularMarketTime;
-    const asOf = time ? new Date(time * 1000).toISOString() : history.at(-1)!.date;
-    // The close before the latest trading day, for the day's change.
-    const today = time ? day(time) : history.at(-1)?.date;
-    const before = history.filter((h) => h.date !== today).at(-1);
-    return {
-      name: item.name, symbol: item.symbol, currency: meta.currency ?? null,
-      as_of: asOf, value, previous_close: before?.value ?? null, history,
-    };
+    const body = await getJson<YahooChart>(`https://query1.finance.yahoo.com/v8/finance/chart/${chartPath(item.symbol)}`);
+    return readChart(body, item.name, item.symbol);
   } catch (e) {
     log("digest", `no quote for ${item.symbol}: ${(e as Error).message}`);
     return null;

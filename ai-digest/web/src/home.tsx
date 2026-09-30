@@ -12,7 +12,7 @@ import type { Digest, LinkGroup, Month, SiteIndex } from "../../shared/types.ts"
 import { loadDigest, loadIndex, loadMonth, safeUrl, useLoad, weekday } from "./data.ts";
 import { Timeline } from "./timeline.tsx";
 import { Link, Scroller, Show } from "./ui.tsx";
-import { MarketsCard } from "./markets.tsx";
+import { QuotesCard, RatesCard } from "./markets.tsx";
 import { CalendarCard, Clocks, WeatherCard } from "./today.tsx";
 
 interface Today {
@@ -127,7 +127,7 @@ interface Card { key: string; render: (user: string) => ReactNode }
 /**
  * The cards on the dashboard, in three columns read left to right by weight:
  * the chosen person's news gets the widest column; then the weather and the
- * calendar; then the clocks, the markets and the links. All but the news come
+ * calendar; then the clocks, the exchange rates, the quotes and the links. All but the news come
  * from the person's own dashboard where the configuration gives one. A card
  * with nothing to show is left out; an empty column too. On a phone the cards
  * become one list, in the order the stylesheet gives them. Add new kinds of
@@ -146,7 +146,6 @@ function columnsFor(t: Today, user: string): Card[][] {
     places: places.flatMap((p) => savedWeather.places.filter((s) =>
       s.name === p.name && s.latitude === p.latitude && s.longitude === p.longitude)),
   };
-  const hasMarkets = markets.rates.length > 0 || markets.quotes.length > 0;
   return [
     [{ key: "news", render: (user: string) => <NewsCard user={user} date={t.date} digest={t.digests[user]} /> }],
     [
@@ -155,7 +154,8 @@ function columnsFor(t: Today, user: string): Card[][] {
     ],
     [
       ...(clocks.length ? [{ key: "clocks", render: () => <Clocks clocks={clocks} /> }] : []),
-      ...(hasMarkets ? [{ key: "markets", render: () => <MarketsCard config={markets} saved={savedMarkets} /> }] : []),
+      ...(markets.rates.length ? [{ key: "rates", render: () => <RatesCard config={markets.rates} saved={savedMarkets} /> }] : []),
+      ...(markets.quotes.length ? [{ key: "quotes", render: () => <QuotesCard config={markets.quotes} saved={savedMarkets} /> }] : []),
       ...(links.some((g) => g.items.length)
         ? [{ key: "links", render: () => <LinksCard groups={links.filter((g) => g.items.length)} /> }]
         : []),

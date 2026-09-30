@@ -97,8 +97,23 @@ mount paths can be moved with `AI_DIGEST_CONFIG`, `AI_DIGEST_SPOOL`,
 The website's browser fetches the live weather and air quality from
 Open-Meteo, current exchange rates from Frankfurter, public holidays from
 Nager.Date, and China's holidays with its make-up working days from
-holiday-cn. Quotes are shown as `digest` saved them: Yahoo Finance does not
-let a browser on another site read them.
+holiday-cn. Yahoo Finance does not let a browser on another site read its
+quotes, so the page asks its own site for `quote/<symbol>?<query>`. To have
+current quotes, route that path in the web server to
+`https://query1.finance.yahoo.com/v8/finance/chart/<symbol>?<query>`, GET
+only; for Caddy:
+
+```
+handle_path /quote/* {
+	rewrite * /v8/finance/chart{uri}
+	reverse_proxy https://query1.finance.yahoo.com {
+		header_up Host {upstream_hostport}
+	}
+}
+```
+
+Without the route, quotes are shown as `digest` saved them. A market trading
+now gets a small dot after its name.
 
 ## Example
 

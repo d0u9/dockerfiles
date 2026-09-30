@@ -1,10 +1,13 @@
 // Exchange rates and quotes on the dashboard: each with its value, the day's
 // change and a month's trend line.
 //
-// The saved snapshot from the latest digest comes first. The rates are then
-// replaced by the current ones from Frankfurter, which the browser may ask
-// directly. Quotes cannot be: Yahoo Finance does not allow a page on another
-// site to read its answers, so they stay as saved, with the time they are from.
+// The saved snapshot from the latest digest comes first; each is then
+// replaced by the current one when the browser can get it. The rates come
+// from Frankfurter, which the browser may ask directly. The quotes come from
+// Yahoo Finance, which does not allow a page on another site to read its
+// answers, so the page asks its own site at quote/<symbol>, which the web
+// server passes on to Yahoo's chart endpoint (README). Without that route,
+// or when Yahoo does not answer, a quote stays as saved.
 //
 // Each row opens Yahoo Finance's page for it in a new tab.
 //
@@ -13,6 +16,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { Markets, MarketsConfig, Series } from "../../shared/types.ts";
+import { type YahooChart, chartPath, readChart, trading } from "../../shared/yahoo.ts";
 
 type Rate = Markets["rates"][number];
 
@@ -46,6 +50,43 @@ function useLiveRates(config: MarketsConfig["rates"], saved: Rate[]): { rates: R
   return { rates: live ?? saved, live: live !== null };
 }
 
+type Quote = Markets["quotes"][number];
+
+/** The time, a minute at a time, so a market's mark follows its hours. */
+function useNow(): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+/** The saved quotes, each replaced by the current one when it can be had. */
+function useLiveQuotes(config: MarketsConfig["quotes"], saved: Quote[]): { quotes: Quote[]; live: boolean } {
+  const [live, setLive] = useState<Map<string, Quote> | null>(null);
+  useEffect(() => {
+    if (!config.length) return;
+    const controller = new AbortController();
+    Promise.all(config.map(({ name, symbol }) =>
+      fetch(`quote/${chartPath(symbol)}`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() as Promise<YahooChart> : Promise.reject(new Error(String(r.status)))))
+        .then((body) => readChart(body, name, symbol))
+        .catch(() => null),
+    )).then((found) => {
+      const got = found.filter((q) => q !== null);
+      if (got.length) setLive(new Map(got.map((q) => [q.symbol, q])));
+    });
+    return () => controller.abort();
+  }, [config]);
+  // In the configuration's order: a quote only the live answer has comes in too.
+  const quotes = config.flatMap((c) => {
+    const q = live?.get(c.symbol) ?? saved.find((s) => s.symbol === c.symbol);
+    return q ? [q] : [];
+  });
+  return { quotes, live: live !== null };
+}
+
 /** A month as a small line. */
 function Spark({ history }: { history: Series }) {
   if (history.length < 2) return <span className="spark" />;
@@ -70,14 +111,14 @@ function format(value: number): string {
 /** Yahoo Finance's page for a symbol: the full chart, news and figures. */
 const detailUrl = (symbol: string) => `https://finance.yahoo.com/quote/${encodeURIComponent(symbol).replace("%3D", "=")}/`;
 
-function Row({ name, sub, symbol, value, previous, history, lead }: {
-  name: string; sub?: string; symbol: string; value: number; previous: number | null; history: Series; lead?: ReactNode;
+function Row({ name, sub, symbol, value, previous, history, lead, open }: {
+  name: string; sub?: string; symbol: string; value: number; previous: number | null; history: Series; lead?: ReactNode; open?: boolean;
 }) {
   const change = previous ? (value - previous) / previous : null;
   const trend = change === null || Math.abs(change) < 0.00005 ? "flat" : change > 0 ? "up" : "down";
   return (
     <li className="mk-item">{lead}<a className="mk-row" href={detailUrl(symbol)} target="_blank" rel="noopener noreferrer" title={`${name} 详情`}>
-      <span className="mk-name">{name}{sub && <span className="muted"> {sub}</span>}</span>
+      <span className="mk-name">{name}{sub && <span className="muted"> {sub}</span>}{open && <span className="mk-open" title="交易中" aria-label="交易中" />}</span>
       <Spark history={history} />
       <span className="mk-value">{format(value)}</span>
       <span className={`mk-change ${trend}`}>
@@ -115,48 +156,60 @@ function flip(r: Rate): Rate {
   };
 }
 
-export function MarketsCard({ config, saved }: { config: MarketsConfig; saved: Markets | null }) {
+/** The exchange rates, each of which the reader may turn round. */
+export function RatesCard({ config, saved }: { config: MarketsConfig["rates"]; saved: Markets | null }) {
   // The day's snapshot has everyone's; keep what this dashboard lists, in its order.
-  const savedRates = config.rates.flatMap((c) => saved?.rates.filter((r) => r.base === c.base && r.quote === c.quote) ?? []);
-  const { rates, live } = useLiveRates(config.rates, savedRates);
-  const quotes = config.quotes.flatMap((c) => saved?.quotes.filter((q) => q.symbol === c.symbol) ?? []);
+  const savedRates = config.flatMap((c) => saved?.rates.filter((r) => r.base === c.base && r.quote === c.quote) ?? []);
+  const { rates, live } = useLiveRates(config, savedRates);
   const [flipped, toggle] = useFlipped();
   const rateDate = rates[0]?.as_of;
   return (
     <>
-      <div className="card-head"><h2>市场</h2></div>
-      {rates.length > 0 && (
-        <section className="mk-group">
-          <h3>汇率 <span className="muted">{live ? "欧洲央行参考价" : "保存的"} · {rateDate && md(rateDate)}</span></h3>
-          <ul className="mk-list">
-            {rates.map((saved) => {
-              const pair = `${saved.base}${saved.quote}`;
-              const r = flipped.has(pair) ? flip(saved) : saved;
-              return (
-                <Row key={pair} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
-                  previous={previous(r.history, r.as_of)} history={r.history}
-                  lead={<button type="button" className="mk-swap" onClick={() => toggle(pair)}
-                    title={`换成 ${r.quote}/${r.base}`} aria-label={`换成 ${r.quote}/${r.base}`}>
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3" />
-                    </svg>
-                  </button>} />
-              );
-            })}
-          </ul>
-        </section>
-      )}
-      {quotes.length > 0 && (
-        <section className="mk-group">
-          <h3>股市 <span className="muted">截至 {md(saved!.fetched_at)} {saved!.fetched_at.slice(11, 16)}</span></h3>
-          <ul className="mk-list">
-            {quotes.map((q) => (
-              <Row key={q.symbol} name={q.name} symbol={q.symbol} value={q.value} previous={q.previous_close} history={q.history} />
-            ))}
-          </ul>
-        </section>
-      )}
-      {!rates.length && !quotes.length && <p className="muted">还没有数据。</p>}
+      <div className="card-head">
+        <h2>汇率</h2>
+        {rateDate && <span className="muted">{live ? "欧洲央行参考价" : "保存的"} · {md(rateDate)}</span>}
+      </div>
+      {rates.length > 0 ? (
+        <ul className="mk-list">
+          {rates.map((saved) => {
+            const pair = `${saved.base}${saved.quote}`;
+            const r = flipped.has(pair) ? flip(saved) : saved;
+            return (
+              <Row key={pair} name={`${r.base}/${r.quote}`} symbol={`${r.base}${r.quote}=X`} value={r.value}
+                previous={previous(r.history, r.as_of)} history={r.history}
+                lead={<button type="button" className="mk-swap" onClick={() => toggle(pair)}
+                  title={`换成 ${r.quote}/${r.base}`} aria-label={`换成 ${r.quote}/${r.base}`}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 5h11M10 2l3 3-3 3M14 11H3M6 8l-3 3 3 3" />
+                  </svg>
+                </button>} />
+            );
+          })}
+        </ul>
+      ) : <p className="muted">还没有数据。</p>}
+    </>
+  );
+}
+
+/** The quotes, in the order the configuration lists them. */
+export function QuotesCard({ config, saved }: { config: MarketsConfig["quotes"]; saved: Markets | null }) {
+  const { quotes, live } = useLiveQuotes(config, saved?.quotes ?? []);
+  const now = useNow();
+  return (
+    <>
+      <div className="card-head">
+        <h2>股市</h2>
+        {live ? <span className="muted">现在</span>
+          : saved && quotes.length > 0 && <span className="muted">截至 {md(saved.fetched_at)} {saved.fetched_at.slice(11, 16)}</span>}
+      </div>
+      {quotes.length > 0 ? (
+        <ul className="mk-list">
+          {quotes.map((q) => (
+            <Row key={q.symbol} name={q.name} symbol={q.symbol} value={q.value} previous={q.previous_close} history={q.history}
+              open={live && trading(q, now)} />
+          ))}
+        </ul>
+      ) : <p className="muted">还没有数据。</p>}
     </>
   );
 }

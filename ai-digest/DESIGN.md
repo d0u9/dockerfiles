@@ -233,7 +233,11 @@ ai-digest-data/
   written.
 - The website replaces the saved rates with current ones from Frankfurter,
   which a browser may ask directly. Yahoo Finance does not allow that, so
-  quotes are shown as saved, with the time they are from.
+  the page asks its own site at `quote/<symbol>`, which the web server passes
+  on to Yahoo's chart endpoint (README). Without that route, or when Yahoo
+  does not answer, quotes are shown as saved, with the time they are from.
+  `session` is the day's regular session; a live quote inside it, with a
+  price from the last half hour, is marked as trading.
 
 ### 5.4 Every pulled article: `<user>.pulled.jsonl`
 
