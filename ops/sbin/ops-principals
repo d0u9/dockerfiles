@@ -1,0 +1,23 @@
+#!/bin/sh
+# sshd's AuthorizedPrincipalsCommand: ops-principals <user> <key-id>.
+#
+# A Cloudflare Access certificate names only the part of the email before the
+# @ as its principal, so that alone would let any address with the same local
+# part in. Access writes the full email as the certificate's key ID; it is
+# accepted only when it is listed in /etc/ops/emails and its local part is the
+# account being logged into. Printing the account name then lets sshd match
+# it against the certificate's principal. Printing nothing refuses the login.
+set -eu
+
+user=${1:-} id=$(printf '%s' "${2:-}" | tr 'A-Z' 'a-z')
+[ -n "$user" ] && [ -n "$id" ] || exit 0
+[ "${id%%@*}" = "$user" ] || exit 0
+
+while read -r email; do
+    email=$(printf '%s' "$email" | tr 'A-Z' 'a-z')
+    if [ "$email" = "$id" ]; then
+        echo "$user"
+        exit 0
+    fi
+done < /etc/ops/emails
+exit 0
