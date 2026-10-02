@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""Point a reserved IP, IPv4 or IPv6, at another droplet."""
+
+import os
+import sys
+
+sys.path[:0] = ["/usr/local/lib/ops", os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "lib")]
+from opslib import (DigitalOcean, canonical_ip, confirm, die, parse, run,  # noqa: E402
+                    usage_error, warn)
+
+HELP = """
+usage: ops-move-ip [-4|-6]
+       ops-move-ip <reserved-ip> <droplet> [-y]
+
+Point an existing reserved IP address, IPv4 or IPv6, at another droplet.
+The family is taken from the address itself.
+
+With no address, list the reserved IPs and the droplets: both families, or
+only IPv4 with -4, only IPv6 with -6.
+<droplet> is a droplet name or a numeric droplet ID.
+
+Before anything changes, the command checks that:
+  - the droplet is in the same region as the address,
+  - the droplet does not already hold another reserved IP of that family.
+It then shows the move and asks for confirmation, unless -y is given.
+It waits until DigitalOcean reports the move complete.
+
+Options:
+  -4, -6     when listing, show only IPv4 or only IPv6 addresses
+  -y         do not ask for confirmation
+  -h, --help show this help
+
+Needs an unlocked shell (ops-unlock or ops-paste).
+To replace a blocked address with a new one, use ops-new-ip.
+
+Examples:
+  ops-move-ip -6
+  ops-move-ip 203.0.113.10 proxy-sgp-02
+  ops-move-ip 2604:a880:2:d1::1:919c:3001 proxy-sfo-02
+"""
+
+
+def table(rows, cols):
+    widths = [max([len(c)] + [len(str(r[i])) for r in rows]) for i, c in enumerate(cols)]
+    for line in [cols] + rows:
+        print("  ".join(str(v).ljust(w) for v, w in zip(line, widths)).rstrip())
+
+
+def listing(do, only):
+    for version in (4, 6):
+        if only and only != version:
+            continue
+        print(f"Reserved IPv{version}:")
+        rows = [[r["ip"], r["region"], r["droplet_id"] or "", r["droplet_name"]]
+                for r in do.reserved(version)]
+        table(rows, ["IP", "Region", "Droplet ID", "Droplet Name"])
+        print()
+    rows = [[d["id"], d["name"], d["region"], d["status"], d["public_v4"], d["public_v6"]]
+            for d in do.droplets()]
+    table(rows, ["ID", "Name", "Region", "Status", "Public IPv4", "Public IPv6"])
+
+
+def main(argv):
+    flags, args = parse(argv, HELP, {"-y", "-4", "-6"})
+    do = DigitalOcean()
+    if not args:
+        listing(do, 6 if "-6" in flags else 4 if "-4" in flags else None)
+        return 0
+    if len(args) != 2:
+        usage_error(HELP)
+
+    version, ip = canonical_ip(args[0])
+    rip = do.get_reserved(ip)
+    d = do.find_droplet(args[1])
+
+    if d["region"] != rip["region"]:
+        die(f"{d['name']} is in {d['region']}, {ip} is in {rip['region']}")
+    if rip["droplet_id"] == d["id"]:
+        print(f"{ip} already points at {d['name']} ({d['id']})")
+        return 0
+    held = do.held_by(version, d["id"])
+    if held:
+        die(f"{d['name']} already holds {held[0]}; a droplet takes one reserved IPv{version}. "
+            f"Move or unassign that one first.")
+    if d["status"] != "active":
+        warn(f"{d['name']} is {d['status']}, traffic to {ip} will go nowhere")
+    if version == 6 and not d["ipv6"]:
+        warn(f"{d['name']} has no IPv6 networking; enable IPv6 on it, or {ip} will not reach it")
+
+    print(f"{ip} ({rip['region']}): {rip['droplet_name'] or '(unassigned)'} -> {d['name']} ({d['id']})")
+    if not confirm("Move it?", "-y" in flags):
+        die("cancelled")
+    do.assign(rip["ip"], d["id"])
+    after = do.get_reserved(rip["ip"])
+    print(f"{after['ip']} now points at {after['droplet_name']} ({after['droplet_id']})")
+    return 0
+
+
+run(main)

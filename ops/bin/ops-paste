@@ -1,0 +1,41 @@
+#!/bin/bash
+# Paste a DigitalOcean token by hand, for when the vault is not available.
+set -euo pipefail
+
+usage() {
+    cat <<'EOF2'
+usage: ops-paste
+
+Read a DigitalOcean token and a Cloudflare token from the keyboard, and open
+a shell that holds them. Either may be left empty. Use it when ops-unlock
+cannot read the vault.
+
+  - The token is not echoed and is not saved anywhere.
+  - Type exit, or stay idle for 15 minutes, to lock again.
+
+DigitalOcean: https://cloud.digitalocean.com/account/api/tokens
+Cloudflare: My Profile > API Tokens, with Zone: Read and DNS: Edit.
+Give each a short expiry and delete it when the emergency is over.
+
+See also: ops-help, ops-unlock
+EOF2
+}
+
+case ${1:-} in
+    -h|--help) usage; exit 0 ;;
+    '') ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+read -rsp 'DigitalOcean token: ' token
+echo >&2
+read -rsp 'Cloudflare token (Enter to skip): ' cftoken
+echo >&2
+[ -n "$token" ] || [ -n "$cftoken" ] || { echo "ops-paste: no token given" >&2; exit 1; }
+
+pairs=()
+[ -z "$token" ] || pairs+=("DIGITALOCEAN_ACCESS_TOKEN=$token")
+[ -z "$cftoken" ] || pairs+=("CLOUDFLARE_API_TOKEN=$cftoken")
+echo "Unlocked: ${pairs[*]%%=*}. Exit or idle ${TMOUT:-900}s to lock." >&2
+exec env "${pairs[@]}" OPS_UNLOCKED=1 \
+    bash --rcfile /usr/local/share/ops/unlocked.bashrc -i

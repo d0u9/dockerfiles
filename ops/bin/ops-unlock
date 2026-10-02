@@ -1,0 +1,47 @@
+#!/bin/bash
+# Decrypt the credentials into a child shell's environment. Nothing is written
+# to disk: the token lives in that shell and its children, and ends with it.
+set -euo pipefail
+
+usage() {
+    cat <<'EOF2'
+usage: ops-unlock
+
+Decrypt the tokens in the vault (DigitalOcean, and Cloudflare when sealed)
+and open a shell that holds them.
+
+  - age asks for the vault passphrase on the terminal.
+  - The token lives only in the new shell and the commands it runs.
+    Nothing is written to disk.
+  - Type exit, or stay idle for 15 minutes, to lock again.
+  - The prompt starts with (unlocked) while a token is loaded.
+
+The vault is /var/lib/ops/vault/creds.age, or $OPS_VAULT when set.
+The host writes it: an age-encrypted (passphrase) file of KEY=value lines.
+If the vault is missing or broken, use ops-paste instead.
+
+See also: ops-help, ops-paste
+EOF2
+}
+
+case ${1:-} in
+    -h|--help) usage; exit 0 ;;
+    '') ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+vault=${OPS_VAULT:-/var/lib/ops/vault/creds.age}
+[ -r "$vault" ] || { echo "ops-unlock: $vault is not readable; try ops-paste" >&2; exit 1; }
+
+# age asks for the passphrase on the terminal. Only KEY=value lines whose key
+# is an upper-case name are taken, and they are exported without eval.
+declare -a pairs=()
+while IFS= read -r line; do
+    [[ $line =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]] || continue
+    pairs+=("${BASH_REMATCH[1]}=${BASH_REMATCH[2]}")
+done < <(age -d "$vault")
+
+[ ${#pairs[@]} -gt 0 ] || { echo "ops-unlock: no credentials found" >&2; exit 1; }
+
+echo "Unlocked: ${pairs[*]%%=*}. Exit or idle ${TMOUT:-900}s to lock." >&2
+exec env "${pairs[@]}" OPS_UNLOCKED=1 bash --rcfile /usr/local/share/ops/unlocked.bashrc -i
