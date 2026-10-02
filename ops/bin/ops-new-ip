@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Give a droplet a brand-new reserved IP, for when the current one is blocked.
+
+A droplet holds one reserved IP of each family at a time, so the new address
+is created unassigned in the droplet's region, the old one is unassigned, and
+the new one is assigned. Cloudflare records that named the old address are
+then repointed. The old address is kept unless its release is confirmed: a
+released address cannot be taken back.
+"""
+
+import os
+import sys
+
+sys.path[:0] = ["/usr/local/lib/ops", os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "lib")]
+from opslib import (APIError, DigitalOcean, Failure, confirm, die, note,  # noqa: E402
+                    parse, repoint_dns, run, usage_error, warn)
+
+HELP = """
+usage: ops-new-ip [-6] <droplet>
+
+Give a droplet a new reserved IP. Use it when the current address is blocked.
+<droplet> is a droplet name or a numeric droplet ID.
+
+Steps, after one confirmation:
+  1. Create a new reserved IP in the droplet's region.
+  2. Unassign the droplet's current reserved IP, if it has one.
+  3. Assign the new address to the droplet.
+  4. Repoint the Cloudflare DNS records of the old address (as ops-dns),
+     when CLOUDFLARE_API_TOKEN is loaded. It asks before changing them.
+  5. Ask whether to release the old address. The default is to keep it.
+
+A released address is gone for good. A kept, unassigned address is billed.
+Subscription links and client configuration that spell out the old address
+still have to be updated by hand.
+
+If a step fails, the command says where it stopped and how to finish.
+
+Options:
+  -6         replace the reserved IPv6 address, not the IPv4 one
+  -h, --help show this help
+
+Needs an unlocked shell (ops-unlock or ops-paste).
+To move an existing address to another droplet, use ops-move-ip.
+
+Examples:
+  ops-new-ip proxy-sgp-01
+  ops-new-ip -6 proxy-sgp-01
+"""
+
+
+def main(argv):
+    flags, args = parse(argv, HELP, {"-6"})
+    if len(args) != 1:
+        usage_error(HELP)
+    version = 6 if "-6" in flags else 4
+    kind = f"reserved IPv{version}"
+    do = DigitalOcean()
+
+    d = do.find_droplet(args[0])
+    held = do.held_by(version, d["id"])
+    old = held[0] if held else None
+    if version == 6 and not d["ipv6"]:
+        warn(f"{d['name']} has no IPv6 networking; enable IPv6 on it, or the new address will not reach it")
+
+    print(f"{d['name']} ({d['id']}, {d['region']}): {old or 'no ' + kind} -> a new {kind}")
+    if not confirm("Go ahead?"):
+        die("cancelled")
+
+    # From here on a failure leaves a half-done change; say how to finish it.
+    new = None
+    stage = "creating the new address"
+    try:
+        new = do.create_reserved(version, d["region"])
+        print(f"created {new}")
+        if old:
+            stage = f"unassigning {old}"
+            do.unassign(old)
+            print(f"unassigned {old}")
+        stage = f"assigning {new}"
+        do.assign(new, d["id"])
+    except (APIError, Failure, KeyboardInterrupt) as e:
+        if isinstance(e, APIError):
+            note(f"DigitalOcean: {e}")
+        elif isinstance(e, Failure):
+            note(str(e))
+        note(f"\nops-new-ip: stopped while {stage}.")
+        if new:
+            note(f"  new {kind}: {new}")
+        if old:
+            note(f"  old {kind}: {old}")
+        if new or old:
+            note("Finish by hand once the droplet is idle:")
+        if new:
+            note(f"  ops-move-ip {new} {d['id']}")
+        if old:
+            note(f"  or restore: ops-move-ip {old} {d['id']}")
+        return 1
+    print(f"assigned {new} to {d['name']}")
+
+    # DNS is a separate step with its own confirmation; a failure there leaves
+    # the address change in place and says how to retry.
+    print()
+    if not old:
+        print(f"No old address, so no DNS record to repoint. Point DNS at {new} by hand: ops-dns --help")
+    elif os.environ.get("CLOUDFLARE_API_TOKEN"):
+        try:
+            if repoint_dns(old, new):
+                note(f"DNS partly updated; retry with: ops-dns {old} {new}")
+        except (APIError, Failure) as e:
+            note(f"DNS not updated ({e}); retry with: ops-dns {old} {new}")
+    else:
+        print(f"DNS not updated: no Cloudflare token. Later: ops-dns {old} {new}")
+
+    if not old:
+        return 0
+    print()
+    print(f"{old} is unassigned now and billed while it stays that way.")
+    if confirm(f"Release {old} for good? It cannot be taken back."):
+        do.delete_reserved(old)
+        print(f"released {old}")
+    else:
+        print(f"kept {old}; move it back with: ops-move-ip {old} {d['name']}")
+    return 0
+
+
+run(main)

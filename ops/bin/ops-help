@@ -1,0 +1,31 @@
+#!/bin/sh
+# List the toolbox commands, or page through the opbook.
+set -eu
+
+book=/usr/local/share/ops/OPBOOK.md
+
+case ${1:-} in
+    book) exec ${PAGER:-less} "$book" ;;
+    -h|--help|'') ;;
+    *) echo "usage: ops-help [book]" >&2; exit 2 ;;
+esac
+
+cat <<EOF
+ops: emergency DigitalOcean toolbox. No credentials inside until you unlock.
+
+  ops-unlock           decrypt the vault token, open an unlocked shell
+  ops-paste            paste a token by hand when the vault fails
+  ops-new-ip [-6] <droplet>
+                       replace a blocked reserved IP (-6: the IPv6 one)
+  ops-move-ip [-4|-6]  list reserved IPs and droplets
+  ops-move-ip <ip> <droplet>
+                       point a reserved IPv4 or IPv6 at another droplet
+  ops-dns <ip>         list Cloudflare DNS records pointing at an IP
+  ops-dns <old> <new>  repoint those records to a new IP
+  doctl ...            full DigitalOcean CLI, with tab completion
+
+Every command takes --help. Type exit to lock.
+Unlocked shells also lock after 15 idle minutes.
+
+Opbook, scenario by scenario: ops-help book
+EOF

@@ -1,0 +1,31 @@
+# Only certificates signed by the mounted CA are accepted: no passwords, no
+# authorized_keys. With no principals file, a certificate logs in only as the
+# account named by one of its principals; Cloudflare Access signs the part of
+# the email before the @ and logs in under that same name.
+Port 22
+HostKey /var/lib/ops/ssh/ssh_host_ed25519_key
+
+PubkeyAuthentication yes
+TrustedUserCAKeys /etc/ops/ca.pub
+AuthorizedKeysFile none
+
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+AllowGroups ops
+
+AllowTcpForwarding no
+AllowAgentForwarding no
+AllowStreamLocalForwarding no
+GatewayPorts no
+X11Forwarding no
+PermitTunnel no
+PermitUserEnvironment no
+
+# Every connection arrives from the tunnel connector's single address, so
+# per-source penalties would end up locking out everyone at once.
+PerSourcePenalties no
+
+ClientAliveInterval 60
+ClientAliveCountMax 3
+LogLevel VERBOSE
