@@ -1,13 +1,16 @@
 # Only certificates signed by the mounted CA are accepted: no passwords, no
-# authorized_keys. With no principals file, a certificate logs in only as the
-# account named by one of its principals; Cloudflare Access signs the part of
-# the email before the @ and logs in under that same name.
+# authorized_keys. Cloudflare Access signs the part of the email before the @
+# as the principal and the full email as the key ID. ops-principals accepts a
+# certificate only when that full email is listed in /etc/ops/emails, so
+# another domain's address with the same local part is refused.
 Port 22
 HostKey /var/lib/ops/ssh/ssh_host_ed25519_key
 
 PubkeyAuthentication yes
 TrustedUserCAKeys /etc/ops/ca.pub
 AuthorizedKeysFile none
+AuthorizedPrincipalsCommand /usr/local/sbin/ops-principals %u %i
+AuthorizedPrincipalsCommandUser nobody
 
 PasswordAuthentication no
 KbdInteractiveAuthentication no

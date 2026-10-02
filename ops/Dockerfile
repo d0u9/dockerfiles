@@ -27,9 +27,9 @@ RUN set -eux; \
     doctl completion bash > /usr/share/bash-completion/completions/doctl
 
 # The root filesystem is read-only at run time, but login names come from the
-# mounted principals file. The account files are therefore links into /run,
+# mounted list of allowed emails. The account files are therefore links into /run,
 # rebuilt by the entrypoint from the copies kept here plus one name per
-# principal, every one of them uid 1000 sharing the ops home. This runs after
+# email, every one of them uid 1000 sharing the ops home. This runs after
 # everything else that needs a working /etc/passwd during the build.
 RUN set -eux; \
     mkdir -p /usr/local/share/ops; \
@@ -44,12 +44,13 @@ COPY tmux.conf /etc/tmux.conf
 COPY unlocked.bashrc /usr/local/share/ops/unlocked.bashrc
 COPY OPBOOK.md /usr/local/share/ops/OPBOOK.md
 COPY entrypoint.sh /usr/local/sbin/entrypoint
+COPY sbin/ops-principals /usr/local/sbin/ops-principals
 COPY bin/ /usr/local/bin/
 COPY lib/opslib.py /usr/local/lib/ops/opslib.py
 
 # Host keys live on a volume so the fingerprint survives a new container;
 # /etc/ops is where the deployment mounts the CA key and
-# the principals file; /var/lib/ops/vault holds the encrypted credentials.
+# the allowed emails; /var/lib/ops/vault holds the encrypted credentials.
 VOLUME ["/var/lib/ops/ssh"]
 
 EXPOSE 22/tcp
