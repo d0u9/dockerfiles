@@ -35,8 +35,8 @@ To replace a blocked address with a new one, use ops-new-ip.
 
 Examples:
   ops-move-ip -6
-  ops-move-ip 203.0.113.10 proxy-sgp-02
-  ops-move-ip 2604:a880:2:d1::1:919c:3001 proxy-sfo-02
+  ops-move-ip 203.0.113.10 example-server-02
+  ops-move-ip 2001:db8::10 example-server-02
 """
 
 

@@ -43,8 +43,8 @@ Needs an unlocked shell (ops-unlock or ops-paste).
 To move an existing address to another droplet, use ops-move-ip.
 
 Examples:
-  ops-new-ip proxy-sgp-01
-  ops-new-ip -6 proxy-sgp-01
+  ops-new-ip example-server-01
+  ops-new-ip -6 example-server-01
 """
 
 
