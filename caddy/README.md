@@ -8,6 +8,17 @@ names resolve to private addresses that Let's Encrypt cannot reach over HTTP.
 
 Paths, volumes and the command match the official image.
 
+## Images
+
+```
+d0u9/caddy-cloudflare:latest                linux/amd64, linux/arm64, on Docker Hub
+ghcr.io/d0u9/caddy-cloudflare:<version>     the same, from GitHub Actions
+```
+
+`./buildx.sh` builds both architectures and pushes `d0u9/caddy-cloudflare:latest` to
+Docker Hub, after `docker login`. Pushing a tag `caddy/v<version>` builds the
+same image in GitHub Actions and pushes it to ghcr.io as `<version>`.
+
 ## Token
 
 Create a Cloudflare API token with `Zone / DNS / Edit`, scoped to the zones

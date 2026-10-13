@@ -5,6 +5,17 @@ package contains the July 2026 security release; the stable Alpine 3.24 package
 does not yet contain those fixes. `apk upgrade` is run during every build so
 base-system security fixes are included as well.
 
+## Images
+
+```
+d0u9/samba:latest                linux/amd64, linux/arm64, on Docker Hub
+ghcr.io/d0u9/samba:<version>     the same, from GitHub Actions
+```
+
+`./buildx.sh` builds both architectures and pushes `d0u9/samba:latest` to
+Docker Hub, after `docker login`. Pushing a tag `samba/v<version>` builds the
+same image in GitHub Actions and pushes it to ghcr.io as `<version>`.
+
 ## Run
 
 Create the account files on the host:
